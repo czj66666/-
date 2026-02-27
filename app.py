@@ -1,4 +1,17 @@
 import streamlit as st
+st.markdown("""
+<style>
+/* metric 数值变黑 */
+[data-testid="stMetricValue"] {
+    color: black !important;
+}
+
+/* metric 标签变黑（比如“总氮”“预测EC”） */
+[data-testid="stMetricLabel"] {
+    color: black !important;
+}
+</style>
+""", unsafe_allow_html=True)
 import pulp
 import pandas as pd
 import plotly.graph_objects as go
@@ -114,9 +127,9 @@ def export_to_excel(solution_dict,res,meq,total_n,ec,sc,sa):
 
 
 # ==================== UI ====================
-st.title("🧪 蓝莓数字化生产管控终端 v21.0,褚梓健最终版")
+st.title("🧪 蓝莓数字化生产管控终端 v1.0")
 
-tab1,tab2,tab3 = st.tabs(["🏗️ 肥料库","🔎 配方回测","🚀 AI 设计"])
+tab1,tab2,tab3 = st.tabs(["🏗️ 肥料库","🔎 配方回测","🚀 结果回推"])
 
 # ----- TAB1 -----
 with tab1:
@@ -250,4 +263,5 @@ with tab3:
         else:
             st.error("❌ 无法满足目标，请检查目标比例")
 
-st.caption("Blueberry Pro v21.0 | 2026 工业级版本")
+
+st.caption("Blueberry Pro v1.0| 2026 工业级版本")
