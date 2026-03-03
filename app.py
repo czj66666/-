@@ -35,7 +35,8 @@ if 'fert_lib' not in st.session_state:
         "Iron 螯合铁": [0,0,0,0,0,0,0.13,0,0,0,0,0,0,0],
         "MnSO4 硫酸锰": [0,0,0,0,0,0,0,0.18,0.31,0,0,0,0,0],
         "ZnSO4 硫酸锌": [0,0,0,0,0,0,0,0.17,0,0.35,0,0,0,0],
-        "Borax 硼砂": [0,0,0,0,0,0,0,0,0,0,0,0.11,0,0]
+        "Borax 硼砂": [0,0,0,0,0,0,0,0,0,0,0,0.11,0,0],
+        "Mo  钼酸铵": [0,0,0,0,0,0,0,0,0,0,0,0,0.42,0]
     }
     st.session_state.fert_lib = pd.DataFrame.from_dict(init_data, orient='index', columns=cols).fillna(0.0)
 
@@ -177,6 +178,7 @@ with tab3:
             st.error("❌ 严重逻辑错误，请检查肥料库数据。")
 
 st.caption("百瑞Blueberry Pro v1.0 | 2026 工业级版本")
+
 
 
 
