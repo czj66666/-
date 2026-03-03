@@ -135,10 +135,11 @@ with tab3:
         "NO3-N": d1.number_input("目标 NO3-N",0.0,300.0,100.0), "NH4-N": d1.number_input("目标 NH4-N",0.0,300.0,50.0),
         "P": d2.number_input("目标 P",0.0,100.0,40.0), "K": d2.number_input("目标 K",0.0,400.0,180.0),
         "Ca": d3.number_input("目标 Ca",0.0,200.0,80.0), "Mg": d3.number_input("目标 Mg",0.0,100.0,30.0),
-        "SO4-S": d4.number_input("目标 SO4-S",0.0,200.0,0.0), "Fe": d4.number_input("目标 Fe",0.0,10.0,0.0),
-        "Mn": d1.number_input("目标 Mn",0.0,5.0,0.0), "Zn": d2.number_input("目标 Zn",0.0,5.0,0.0),
-        "Cu": d3.number_input("目标 Cu",0.0,2.0,0.0), "B": d4.number_input("目标 B",0.0,2.0,0.0),
-        "Urea-N": d1.number_input("目标 Urea-N",0.0,100.0,0.0)
+        "SO4-S": d4.number_input("目标 SO4-S",0.0,200.0,0.0), "Fe": d4.number_input("目标 Fe",0.000,10.0,0.0),
+        "Mn": d1.number_input("目标 Mn",0.000,7.0,0.0), "Zn": d2.number_input("目标 Zn",0.000,5.0,0.0),
+        "Cu": d3.number_input("目标 Cu",0.000,3.0,0.0), "B": d4.number_input("目标 B",0.000,8.0,0.0),
+        "Mo": d2.number_input("目标 Mo",0.000,3.0,0.0),
+        "Urea-N": d1.number_input("目标 Urea-N",0.00,100.0,0.0)
     }
 
     if st.button("🚀 求解最优投料"):
@@ -176,6 +177,7 @@ with tab3:
             st.error("❌ 严重逻辑错误，请检查肥料库数据。")
 
 st.caption("百瑞Blueberry Pro v1.0 | 2026 工业级版本")
+
 
 
 
