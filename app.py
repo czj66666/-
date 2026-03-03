@@ -115,7 +115,7 @@ with st.sidebar:
     dosing_rate = st.number_input("吸肥比例(%)",value=0.53)/100
     ec_calib = st.slider("EC 修正系数",0.8,1.4,1.08,0.01)
     st.divider(); st.header("💧 原水数据")
-    w_data = {el: st.number_input(el,0.0) for el in ["NO3-N","NH4-N","P","K","Ca","Mg","SO4-S"]}
+    w_data = {el: st.number_input(el,0.0) for el in ["NO3-N","NH4-N","P","K","Ca","Mg","SO4-S","Fe","Mn","Zn","Cu","B","Mo"]}
     w_data["EC"] = st.number_input("原水 EC",0.05)
 
 with tab2:
@@ -175,3 +175,4 @@ with tab3:
             st.error("❌ 严重逻辑错误，请检查肥料库数据。")
 
 st.caption("Blueberry Pro v1.0 | 2026 工业级版本")
+
