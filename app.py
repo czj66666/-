@@ -103,7 +103,7 @@ def show_results(res,tn,meq,ec,sc,sa,final_dict):
     st.download_button("📥 下载完整Excel报告", buffer, file_name=f"Blueberry_Report_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 # ==================== UI 核心 ====================
-st.title("🧪 蓝莓数字化生产管控终端 v1.0")
+st.title("🧪 营养液计算系统 v1.0")
 tab1,tab2,tab3 = st.tabs(["🏗️ 肥料库","🔎 配方回测","🚀 结果回推"])
 
 with tab1:
@@ -175,7 +175,8 @@ with tab3:
         else:
             st.error("❌ 严重逻辑错误，请检查肥料库数据。")
 
-st.caption("Blueberry Pro v1.0 | 2026 工业级版本")
+st.caption("百瑞Blueberry Pro v1.0 | 2026 工业级版本")
+
 
 
 
