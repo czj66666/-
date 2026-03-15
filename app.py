@@ -37,8 +37,7 @@ if 'fert_lib' not in st.session_state:
         "Borax 硼砂": [0,0,0,0,0,0,0,0,0,0,0,0.11,0,0],
         "Mo  钼酸铵": [0,0,0,0,0,0,0,0,0,0,0,0,0.42,0],
 
-        # ✅ 新增：铜来源（否则 Cu 永远只能为 0）
-        # CuSO4·5H2O: Cu≈0.255；SO4-S(以S计)≈0.128
+        # 铜来源
         "CuSO4·5H2O 硫酸铜": [0,0,0,0,0,0,0,0.128,0,0,0.255,0,0,0],
     }
     st.session_state.fert_lib = pd.DataFrame.from_dict(init_data, orient='index', columns=cols).fillna(0.0)
@@ -71,14 +70,19 @@ def export_to_excel(solution_dict,res,meq,total_n,ec,sc,sa):
     ws1 = wb.active
     ws1.title = "Fertilizer Plan"
     ws1.append(["肥料名称","投料 kg"])
-    for k,v in solution_dict.items(): ws1.append([k,round(v,4)])
+    for k,v in solution_dict.items():
+        ws1.append([k,round(v,4)])
     ws2 = wb.create_sheet("Element PPM")
     ws2.append(["元素","ppm"])
-    for k,v in res.items(): ws2.append([k,round(v,3)])
+    for k,v in res.items():
+        ws2.append([k,round(v,3)])
     ws3 = wb.create_sheet("Ion Balance")
     ws3.append(["离子","meq/L"])
-    for k,v in meq.items(): ws3.append([k,round(v,3)])
-    ws3.append([]); ws3.append(["Σ 阳离子",round(sc,3)]); ws3.append(["Σ 阴离子",round(sa,3)])
+    for k,v in meq.items():
+        ws3.append([k,round(v,3)])
+    ws3.append([])
+    ws3.append(["Σ 阳离子",round(sc,3)])
+    ws3.append(["Σ 阴离子",round(sa,3)])
     return wb
 
 def show_results(res,tn,meq,ec,sc,sa,final_dict):
@@ -100,19 +104,27 @@ def show_results(res,tn,meq,ec,sc,sa,final_dict):
         ])
         fig.update_layout(height=350,barmode='group')
         st.plotly_chart(fig,use_container_width=True)
-    wb = export_to_excel(final_dict,res,meq,tn,ec,sc,sa)
-    buffer = BytesIO(); wb.save(buffer); buffer.seek(0)
-    st.download_button("📥 下载完整Excel报告", buffer, file_name=f"Blueberry_Report_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
-# ==================== 调酸统一计算 ====================
+    wb = export_to_excel(final_dict,res,meq,tn,ec,sc,sa)
+    buffer = BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+    st.download_button(
+        "📥 下载完整Excel报告",
+        buffer,
+        file_name=f"Blueberry_Report_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+# ==================== 调酸统一计算（支持多种酸 + 浓度可选） ====================
 def get_water_for_calc(w_data, dosing_rate, tank_vol):
     acid_mode = st.session_state.get("acid_mode", "不调酸")
     target_pH = st.session_state.get("target_pH", 5.5)
-    acid_type = st.session_state.get("acid_type", "85% 磷酸 (H3PO4)")
 
     hco3_val = w_data.get("HCO3", 0.0)
     current_hco3_meq = hco3_val / 61.02
 
+    # 根据目标pH估算残余碱度
     if target_pH <= 5.0:
         target_residual_meq = 0.1
     elif target_pH <= 5.5:
@@ -122,42 +134,110 @@ def get_water_for_calc(w_data, dosing_rate, tank_vol):
     else:
         target_residual_meq = 1.0
 
-    acid_map = {
-        "85% 磷酸 (H3PO4)": {"d": 1.685, "mw": 98.0, "p": 0.85, "val": 1, "el": "P", "el_w": 30.97},
-        "98% 硫酸 (H2SO4)": {"d": 1.84, "mw": 98.07, "p": 0.98, "val": 2, "el": "SO4-S", "el_w": 32.06},
-        "68% 硝酸 (HNO3)": {"d": 1.41, "mw": 63.01, "p": 0.68, "val": 1, "el": "NO3-N", "el_w": 14.01}
+    # 酸参数：不同浓度对应不同密度
+    acid_catalog = {
+        "磷酸 (H3PO4)": {
+            "mw": 98.0, "val": 1, "el": "P", "el_w": 30.97,
+            "options": {
+                "75%": {"density": 1.58, "purity": 0.75},
+                "80%": {"density": 1.63, "purity": 0.80},
+                "85%": {"density": 1.685, "purity": 0.85},
+            }
+        },
+        "硫酸 (H2SO4)": {
+            "mw": 98.07, "val": 2, "el": "SO4-S", "el_w": 32.06,
+            "options": {
+                "50%": {"density": 1.40, "purity": 0.50},
+                "98%": {"density": 1.84, "purity": 0.98},
+            }
+        },
+        "硝酸 (HNO3)": {
+            "mw": 63.01, "val": 1, "el": "NO3-N", "el_w": 14.01,
+            "options": {
+                "30%": {"density": 1.18, "purity": 0.30},
+                "40%": {"density": 1.25, "purity": 0.40},
+                "55%": {"density": 1.33, "purity": 0.55},
+                "68%": {"density": 1.41, "purity": 0.68},
+            }
+        }
     }
-    a = acid_map[acid_type]
+
+    acid_list = st.session_state.get("acid_list", [])
 
     w_data_calc = dict(w_data)
-    needed_meq = 0.0
-    ml_per_m3 = 0.0
-    nutrient_ppm = 0.0
-    acid_L_per_bucket = 0.0
+    acid_detail_rows = []
+
+    needed_meq_total = 0.0
+    acid_L_per_bucket_total = 0.0
+    nutrient_additions = {"P": 0.0, "SO4-S": 0.0, "NO3-N": 0.0}
 
     if acid_mode == "调酸":
-        needed_meq = max(0.0, current_hco3_meq - target_residual_meq)
-        ml_per_m3 = (needed_meq * a["mw"]) / (a["d"] * a["p"] * a["val"])
-        nutrient_ppm = (needed_meq / a["val"]) * a["el_w"]
-        w_data_calc["HCO3"] = target_residual_meq * 61.02
-        w_data_calc[a["el"]] = w_data_calc.get(a["el"], 0.0) + nutrient_ppm
-        acid_L_per_bucket = ml_per_m3 * tank_vol / (dosing_rate * 1_000_000)
+        needed_meq_total = max(0.0, current_hco3_meq - target_residual_meq)
 
-    return w_data_calc, current_hco3_meq, needed_meq, ml_per_m3, nutrient_ppm, a, target_residual_meq, acid_L_per_bucket
+        active_acids = [a for a in acid_list if a.get("enabled", True) and a.get("share", 0) > 0]
+        total_share = sum(a.get("share", 0) for a in active_acids)
+
+        if needed_meq_total > 0 and total_share > 0:
+            for item in active_acids:
+                acid_name = item["acid_type"]
+                conc_label = item.get("conc_label", "")
+                share = item.get("share", 0) / total_share
+
+                base = acid_catalog[acid_name]
+                opt = base["options"][conc_label]
+
+                density = opt["density"]
+                purity = opt["purity"]
+
+                # 该酸承担的中和量
+                acid_meq = needed_meq_total * share
+
+                # ml/m3 = meq/L × mw / (density × purity × val)
+                ml_per_m3 = (acid_meq * base["mw"]) / (density * purity * base["val"])
+                nutrient_ppm = (acid_meq / base["val"]) * base["el_w"]
+                acid_L_per_bucket = ml_per_m3 * tank_vol / (dosing_rate * 1_000_000)
+
+                nutrient_additions[base["el"]] += nutrient_ppm
+                acid_L_per_bucket_total += acid_L_per_bucket
+
+                acid_detail_rows.append({
+                    "酸种": acid_name,
+                    "浓度": conc_label,
+                    "分担比例(%)": round(share * 100, 1),
+                    "中和碱度(meq/L)": round(acid_meq, 3),
+                    "用量(ml/m³)": round(ml_per_m3, 2),
+                    "单桶加酸(L)": round(acid_L_per_bucket, 3),
+                    f"{base['el']}增加(ppm)": round(nutrient_ppm, 2)
+                })
+
+        # 修正原水
+        w_data_calc["HCO3"] = target_residual_meq * 61.02
+        for el, add_val in nutrient_additions.items():
+            w_data_calc[el] = w_data_calc.get(el, 0.0) + add_val
+
+    return (
+        w_data_calc,
+        current_hco3_meq,
+        needed_meq_total,
+        nutrient_additions,
+        target_residual_meq,
+        acid_L_per_bucket_total,
+        acid_detail_rows
+    )
 
 # ==================== 侧边栏（系统参数 + 原水数据） ====================
 with st.sidebar:
     st.header("⚙️ 系统参数")
-    tank_vol = st.number_input("母液桶体积(L)", value=1000)
-    dosing_rate = st.number_input("吸肥比例(%)", value=0.53) / 100
+    tank_vol = st.number_input("母液桶体积(L)", min_value=1.0, value=1000.0, step=100.0)
+    dosing_rate = st.number_input("吸肥比例(%)", min_value=0.01, value=0.53, step=0.01) / 100
     ec_calib = st.slider("EC 修正系数", 0.8, 1.4, 1.08, 0.01)
 
     st.divider()
     st.header("💧 原水数据")
     w_elements = ["NO3-N","NH4-N","P","K","Ca","Mg","SO4-S","Fe","Mn","Zn","Cu","B","Mo"]
-    w_data = {el: st.number_input(el, 0.0) for el in w_elements}
-    w_data["HCO3"] = st.number_input("HCO3 (碳酸氢根) ppm", 0.0)
-    w_data["EC"] = st.number_input("原水 EC", 0.05)
+    w_data = {el: st.number_input(el, min_value=0.0, value=0.0, step=0.1) for el in w_elements}
+    w_data["HCO3"] = st.number_input("HCO3 (碳酸氢根) ppm", min_value=0.0, value=0.0, step=1.0)
+    w_data["EC"] = st.number_input("原水 EC", min_value=0.0, value=0.05, step=0.01)
 
 # ==================== 主界面 Tabs ====================
 st.title("🧪 营养液计算系统 v1.2")
@@ -171,33 +251,130 @@ tab1, tab_acid, tab2, tab3 = st.tabs([
 
 # Tab1：肥料库
 with tab1:
-    st.session_state.fert_lib = st.data_editor(st.session_state.fert_lib, num_rows="dynamic", use_container_width=True)
+    st.session_state.fert_lib = st.data_editor(
+        st.session_state.fert_lib,
+        num_rows="dynamic",
+        use_container_width=True
+    )
 
 # Tab：调酸设置（独立页）
 with tab_acid:
     st.header("💧 调酸设置")
     acid_mode = st.selectbox("调酸模式", ["不调酸", "调酸"], index=0, key="acid_mode")
     target_pH = st.slider("目标 pH", 4.0, 7.0, 5.5, 0.1, key="target_pH")
-    acid_type = st.selectbox(
-        "选择使用的酸液",
-        ["85% 磷酸 (H3PO4)", "98% 硫酸 (H2SO4)", "68% 硝酸 (HNO3)"],
-        key="acid_type"
-    )
 
-    w_data_calc_preview, current_hco3_meq, needed_meq, ml_per_m3, nutrient_ppm, a, target_residual_meq, acid_L = get_water_for_calc(w_data, dosing_rate, tank_vol)
+    acid_options_map = {
+        "磷酸 (H3PO4)": ["75%", "80%", "85%"],
+        "硫酸 (H2SO4)": ["50%", "98%"],
+        "硝酸 (HNO3)": ["30%", "40%", "55%", "68%"]
+    }
+
+    if "acid_list" not in st.session_state:
+        st.session_state.acid_list = [
+            {"acid_type": "磷酸 (H3PO4)", "conc_label": "85%", "share": 100.0, "enabled": True}
+        ]
+
+    if acid_mode == "调酸":
+        st.subheader("酸液组合设置")
+
+        if st.button("➕ 添加一种酸"):
+            st.session_state.acid_list.append({
+                "acid_type": "磷酸 (H3PO4)",
+                "conc_label": "85%",
+                "share": 0.0,
+                "enabled": True
+            })
+
+        delete_idx = None
+
+        for i, acid in enumerate(st.session_state.acid_list):
+            st.markdown(f"**酸液 {i+1}**")
+            c1, c2, c3, c4, c5 = st.columns([2.2, 1.4, 1.2, 1.0, 0.8])
+
+            acid_types = list(acid_options_map.keys())
+            current_type = acid.get("acid_type", "磷酸 (H3PO4)")
+            if current_type not in acid_types:
+                current_type = "磷酸 (H3PO4)"
+
+            acid["acid_type"] = c1.selectbox(
+                f"酸种_{i}",
+                acid_types,
+                index=acid_types.index(current_type),
+                key=f"acid_type_{i}"
+            )
+
+            valid_concs = acid_options_map[acid["acid_type"]]
+            current_conc = acid.get("conc_label", valid_concs[0])
+            if current_conc not in valid_concs:
+                current_conc = valid_concs[0]
+
+            acid["conc_label"] = c2.selectbox(
+                f"浓度_{i}",
+                valid_concs,
+                index=valid_concs.index(current_conc),
+                key=f"acid_conc_{i}"
+            )
+
+            acid["share"] = c3.number_input(
+                f"比例%_{i}",
+                min_value=0.0,
+                max_value=100.0,
+                value=float(acid.get("share", 0.0)),
+                step=1.0,
+                key=f"acid_share_{i}"
+            )
+
+            acid["enabled"] = c4.checkbox(
+                f"启用_{i}",
+                value=acid.get("enabled", True),
+                key=f"acid_enable_{i}"
+            )
+
+            if c5.button("删除", key=f"acid_del_{i}"):
+                delete_idx = i
+
+        if delete_idx is not None:
+            st.session_state.acid_list.pop(delete_idx)
+            st.rerun()
+
+    (
+        w_data_calc_preview,
+        current_hco3_meq,
+        needed_meq_total,
+        nutrient_additions,
+        target_residual_meq,
+        acid_L_total,
+        acid_detail_rows
+    ) = get_water_for_calc(w_data, dosing_rate, tank_vol)
 
     st.info(f"原水碳酸氢根碱度: {round(current_hco3_meq, 2)} meq/L")
 
     if acid_mode == "调酸":
-        c1, c2, c3 = st.columns(3)
-        c1.metric("酸液用量", f"{round(ml_per_m3, 1)} ml/m³", help="每立方米最终营养液")
-        c2.metric(f"{a['el']} 增加", f"{round(nutrient_ppm, 1)} ppm")
-        c3.metric("单桶酸量", f"{round(acid_L, 2)} L", help="母液桶实际添加体积")
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("总需中和碱度", f"{round(needed_meq_total, 2)} meq/L")
+        c2.metric("总单桶加酸量", f"{round(acid_L_total, 3)} L")
+        c3.metric("调酸后 HCO3", f"{round(w_data_calc_preview.get('HCO3', 0.0), 1)} ppm")
+        c4.metric("目标残余碱度", f"{round(target_residual_meq, 2)} meq/L")
+
+        add_cols = st.columns(3)
+        add_cols[0].metric("P 增加", f"{round(nutrient_additions.get('P', 0.0), 2)} ppm")
+        add_cols[1].metric("NO3-N 增加", f"{round(nutrient_additions.get('NO3-N', 0.0), 2)} ppm")
+        add_cols[2].metric("SO4-S 增加", f"{round(nutrient_additions.get('SO4-S', 0.0), 2)} ppm")
+
+        if acid_detail_rows:
+            st.subheader("各酸贡献明细")
+            st.dataframe(pd.DataFrame(acid_detail_rows), use_container_width=True, hide_index=True)
+        else:
+            st.warning("⚠️ 已开启调酸，但没有有效酸液比例，请设置至少一种酸的比例大于 0。")
     else:
         st.success("✅ 不调酸，无需添加酸液")
 
-    st.caption(f"✅ 当前设置：模式={acid_mode} | 目标pH={target_pH} | 残余碱度={round(target_residual_meq,2)} meq/L | HCO3={round(w_data_calc_preview.get('HCO3',0.0),1)} ppm")
-    st.warning("⚠️ 实际调酸受水温和有机质影响，建议先进行小杯滴定实验验证。")
+    st.caption(
+        f"✅ 当前设置：模式={acid_mode} | 目标pH={target_pH} | "
+        f"残余碱度={round(target_residual_meq,2)} meq/L | "
+        f"HCO3={round(w_data_calc_preview.get('HCO3',0.0),1)} ppm"
+    )
+    st.warning("⚠️ 实际调酸受水温、缓冲体系和有机质影响，建议先做小杯滴定实验验证。")
 
 # Tab2：配方回测
 with tab2:
@@ -206,7 +383,7 @@ with tab2:
     cols = st.columns(3)
     for i, n in enumerate(names):
         with cols[i % 3]:
-            inputs[n] = st.number_input(f"{n}(kg)", 0.0, step=0.1, key=f"t2_{n}")
+            inputs[n] = st.number_input(f"{n}(kg)", min_value=0.0, step=0.1, key=f"t2_{n}")
 
     st.info("💡 调酸参数已在【💧 调酸设置】页统一设置，点击下方按钮即可使用最新参数")
 
@@ -236,10 +413,9 @@ with tab3:
         "Urea-N": d1.number_input("目标 Urea-N",0.00,100.0,0.0)
     }
 
-    # ✅ 微量不出滑块，但强制命中（固定超高权重）
     MICROS = ["Fe","Mn","Zn","Cu","B","Mo"]
     MICRO_FIXED_WEIGHT = 5000.0
-    SO4_RELAX_WEIGHT = 0.2  # 为了让 Mn/Zn/Cu 能命中，SO4 允许更大偏差
+    SO4_RELAX_WEIGHT = 0.2
 
     if st.button("🚀 求解最优投料"):
         prob = pulp.LpProblem("Opt", pulp.LpMinimize)
@@ -269,8 +445,8 @@ with tab3:
         prob += pulp.lpSum([v[n] for n in names]) * 0.01 + penalty
         prob.solve(pulp.PULP_CBC_CMD(msg=False))
 
-        if pulp.LpStatus[prob.status] != 'Infeasible':
-            sol = {n: pulp.value(v[n]) for n in names if pulp.value(v[n]) > 0.001}
+        if pulp.LpStatus[prob.status] not in ['Infeasible', 'Undefined', 'Unbounded']:
+            sol = {n: pulp.value(v[n]) for n in names if pulp.value(v[n]) and pulp.value(v[n]) > 0.001}
             st.success("✅ 已生成最接近目标的优化方案")
 
             sol_df = pd.DataFrame(list(sol.items()), columns=["肥料", "投料 kg"])
@@ -288,8 +464,10 @@ with tab3:
                 diff = actual_val - target
                 pct_error = (diff / target * 100) if target > 0 else 0.0
                 comparison_data.append({
-                    "元素": el, "目标 ppm": round(target, 2),
-                    "实际 ppm": round(actual_val, 2), "差值": round(diff, 2),
+                    "元素": el,
+                    "目标 ppm": round(target, 2),
+                    "实际 ppm": round(actual_val, 2),
+                    "差值": round(diff, 2),
                     "%偏差": f"{round(pct_error, 1)}%"
                 })
             comp_df = pd.DataFrame(comparison_data)
@@ -297,10 +475,15 @@ with tab3:
             def color_deviation(val):
                 try:
                     vv = float(str(val).strip('%'))
-                    if abs(vv) <= 2:   return 'background-color: #d4edda; color: #155724'
-                    elif abs(vv) <= 5: return 'background-color: #fff3cd; color: #856404'
-                    else:              return 'background-color: #f8d7da; color: #721c24'
-                except: return ''
+                    if abs(vv) <= 2:
+                        return 'background-color: #d4edda; color: #155724'
+                    elif abs(vv) <= 5:
+                        return 'background-color: #fff3cd; color: #856404'
+                    else:
+                        return 'background-color: #f8d7da; color: #721c24'
+                except:
+                    return ''
+
             styled_df = comp_df.style.applymap(color_deviation, subset=['%偏差']).format({"%偏差": "{}"}).set_properties(**{'text-align': 'center'})
             st.dataframe(styled_df, use_container_width=True, hide_index=True)
 
@@ -308,10 +491,4 @@ with tab3:
         else:
             st.error("❌ 无解：目标/肥料库耦合导致不可同时满足。建议降低 SO4-S 目标或增加更多非硫酸盐的微量来源。")
 
-st.caption("百瑞Blueberry Pro v1.o | 2026")
-
-
-
-
-
-
+st.caption("百瑞Blueberry Pro v1.0 | 2026")
