@@ -11,10 +11,197 @@ st.set_page_config(page_title="Blueberry Pro v1.9", layout="wide")
 
 st.markdown("""
 <style>
-[data-testid="stMetricValue"] { color: black !important; }
-[data-testid="stMetricLabel"] { color: #1e3a8a !important; font-weight: bold; }
-.stMetric { background-color: #f1f5f9; border-radius: 10px; border-left: 6px solid #1e3a8a; }
-h1, h2, h3 { color: #1e3a8a; }
+:root {
+    --bg: #f6f8fb;
+    --card: #ffffff;
+    --text: #0f172a;
+    --muted: #64748b;
+    --line: #e2e8f0;
+    --primary: #2563eb;
+    --primary-soft: #dbeafe;
+    --shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+    --radius: 18px;
+}
+
+html, body, [data-testid="stAppViewContainer"] {
+    background: var(--bg);
+    color: var(--text);
+}
+
+.block-container {
+    padding-top: 1.2rem;
+    padding-bottom: 2rem;
+    max-width: 1500px;
+}
+
+h1, h2, h3 {
+    color: var(--text) !important;
+    letter-spacing: -0.02em;
+}
+
+h1 {
+    font-size: 2rem !important;
+    font-weight: 800 !important;
+    margin-bottom: 0.2rem !important;
+}
+
+h2 {
+    font-size: 1.25rem !important;
+    font-weight: 700 !important;
+    margin-top: 0.2rem !important;
+}
+
+h3 {
+    font-size: 1.02rem !important;
+    font-weight: 700 !important;
+}
+
+p, label, div {
+    color: var(--text);
+}
+
+small, .stCaption, [data-testid="stCaptionContainer"] {
+    color: var(--muted) !important;
+}
+
+/* 顶部标题 */
+.hero-box {
+    background: linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
+    border: 1px solid var(--line);
+    border-radius: 24px;
+    padding: 22px 24px 18px 24px;
+    box-shadow: var(--shadow);
+    margin-bottom: 1rem;
+}
+
+.hero-title {
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--text);
+    margin-bottom: 0.3rem;
+    letter-spacing: -0.03em;
+}
+
+.hero-subtitle {
+    color: var(--muted);
+    font-size: 0.98rem;
+    line-height: 1.6;
+}
+
+/* 侧边栏 */
+[data-testid="stSidebar"] {
+    background: #f8fafc;
+    border-right: 1px solid var(--line);
+}
+
+[data-testid="stSidebar"] .block-container {
+    padding-top: 1rem;
+}
+
+/* Tabs */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 10px;
+    background: transparent;
+    padding: 2px 0 10px 0;
+}
+
+.stTabs [data-baseweb="tab"] {
+    background: #eef2f7;
+    border-radius: 999px;
+    padding: 10px 18px;
+    height: auto;
+    border: 1px solid transparent;
+    color: var(--muted);
+    font-weight: 600;
+}
+
+.stTabs [aria-selected="true"] {
+    background: var(--card) !important;
+    color: var(--primary) !important;
+    border: 1px solid var(--line) !important;
+    box-shadow: var(--shadow);
+}
+
+/* Metric */
+[data-testid="stMetric"] {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    box-shadow: var(--shadow);
+}
+
+[data-testid="stMetricLabel"] {
+    color: var(--muted) !important;
+    font-weight: 600 !important;
+}
+
+[data-testid="stMetricValue"] {
+    color: var(--text) !important;
+    font-weight: 800 !important;
+}
+
+/* dataframe / table */
+[data-testid="stDataFrame"] {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 6px;
+    box-shadow: var(--shadow);
+}
+
+/* 输入框 */
+div[data-baseweb="input"],
+div[data-baseweb="select"] > div {
+    border-radius: 14px !important;
+}
+
+div[data-baseweb="input"] > div,
+div[data-baseweb="select"] > div {
+    border: 1px solid var(--line) !important;
+    box-shadow: none !important;
+    background: #fff !important;
+}
+
+div[data-baseweb="input"] > div:focus-within,
+div[data-baseweb="select"] > div:focus-within {
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.10) !important;
+}
+
+/* 按钮 */
+.stButton > button,
+.stDownloadButton > button {
+    border-radius: 999px !important;
+    border: 1px solid transparent !important;
+    background: var(--primary) !important;
+    color: white !important;
+    font-weight: 700 !important;
+    padding: 0.6rem 1.1rem !important;
+    box-shadow: var(--shadow);
+}
+
+.stButton > button:hover,
+.stDownloadButton > button:hover {
+    background: #1d4ed8 !important;
+}
+
+/* Alert */
+[data-testid="stAlert"] {
+    border-radius: 16px !important;
+    border: 1px solid var(--line) !important;
+    box-shadow: var(--shadow);
+}
+
+/* 卡片容器 */
+.soft-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    padding: 16px 18px;
+    box-shadow: var(--shadow);
+    margin-bottom: 12px;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -322,7 +509,6 @@ def export_to_excel(solution_dict, acid_rows, res_df, meq, total_n, ec, sc, sa, 
     for _, row in tonnage_df.iterrows():
         ws5.append(row.tolist())
 
-    # 比值表
     ws6 = wb.create_sheet("Element Ratios")
     ws6.append(["项目", "数值"])
 
@@ -386,6 +572,7 @@ def show_results(res, tn, meq, ec, sc, sa, final_dict, base_water=None, acid_add
 
     with l:
         st.subheader("元素 ppm 明细")
+        st.caption("显示原水本底、酸带入、肥料贡献与最终总浓度。")
         st.dataframe(df_res, use_container_width=True, hide_index=True)
 
         st.subheader("投料方案")
@@ -416,6 +603,7 @@ def show_results(res, tn, meq, ec, sc, sa, final_dict, base_water=None, acid_add
         st.dataframe(plan_df, use_container_width=True, hide_index=True)
 
         st.subheader("1 吨到 5 吨水投料表")
+        st.caption("便于现场按不同配水量直接取数。")
         st.dataframe(tonnage_df, use_container_width=True, hide_index=True)
 
     with r:
@@ -442,6 +630,7 @@ def show_results(res, tn, meq, ec, sc, sa, final_dict, base_water=None, acid_add
         st.dataframe(ratio_rows, use_container_width=True, hide_index=True)
 
         st.subheader("成本明细")
+        st.caption("按肥料单价自动汇总每种肥料成本与总成本。")
         show_cost_df = cost_df[["肥料", "投料", "单价(元/kg)", "成本(元)"]].copy()
         st.dataframe(show_cost_df, use_container_width=True, hide_index=True)
 
@@ -532,23 +721,34 @@ def solve_micro_targets(micro_targets, lib, cf):
     micro_sol = {n: pulp.value(v_micro[n]) for n in micro_names if pulp.value(v_micro[n]) and pulp.value(v_micro[n]) > 0.001}
     return status, micro_sol, micro_names
 
-# ==================== 侧边栏（系统参数 + 原水数据） ====================
+# ==================== 侧边栏 ====================
 with st.sidebar:
-    st.header("⚙️ 系统参数")
+    st.markdown("### ⚙️ 系统参数")
+    st.caption("设置母液桶体积、吸肥比例与 EC 修正系数。")
     tank_vol = st.number_input("母液桶体积(L)", min_value=1.0, value=1000.0, step=100.0)
     dosing_rate = st.number_input("吸肥比例(%)", min_value=0.01, value=0.53, step=0.01) / 100
     ec_calib = st.slider("EC 修正系数", 0.8, 1.4, 1.08, 0.01)
 
     st.divider()
-    st.header("💧 原水数据")
+
+    st.markdown("### 💧 原水数据")
+    st.caption("输入原水基础元素、碱度、EC 与 pH。")
     w_elements = ["NO3-N","NH4-N","P","K","Ca","Mg","SO4-S","Fe","Mn","Zn","Cu","B","Mo"]
     w_data = {el: st.number_input(el, min_value=0.0, value=0.0, step=0.1, key=f"w_{el}") for el in w_elements}
     w_data["HCO3"] = st.number_input("HCO3 (碳酸氢根) ppm", min_value=0.0, value=0.0, step=1.0)
     w_data["EC"] = st.number_input("原水 EC", min_value=0.0, value=0.05, step=0.01)
     w_data["pH"] = st.number_input("原水 pH", min_value=0.0, max_value=14.0, value=7.0, step=0.1)
 
-# ==================== 主界面 Tabs ====================
-st.title("🧪 营养液计算系统 v1.9")
+# ==================== 主界面 ====================
+st.markdown("""
+<div class="hero-box">
+    <div class="hero-title">🧪 营养液计算系统 v1.9</div>
+    <div class="hero-subtitle">
+        面向蓝莓营养液配方设计的专业计算工具。支持原水修正、调酸、多阶段配肥、成本核算、
+        1~5 吨投料表，以及 K / Ca / Mg 结构分析。
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
 tab1, tab_acid, tab2, tab3 = st.tabs([
     "🏗️ 肥料库",
@@ -559,23 +759,33 @@ tab1, tab_acid, tab2, tab3 = st.tabs([
 
 # Tab1：肥料库
 with tab1:
+    st.markdown('<div class="soft-card">', unsafe_allow_html=True)
+    st.subheader("肥料库")
+    st.caption("可直接编辑元素含量与价格，作为后续回测、优化与成本计算基础。")
     st.session_state.fert_lib = st.data_editor(
         st.session_state.fert_lib,
         num_rows="dynamic",
         use_container_width=True
     )
+    st.markdown('</div>', unsafe_allow_html=True)
 
-    st.divider()
     c1, c2 = st.columns(2)
     with c1:
+        st.markdown('<div class="soft-card">', unsafe_allow_html=True)
         st.subheader("大量肥名单")
+        st.caption("第一阶段优化时允许参与求解。")
         st.write(MACRO_FERTILIZERS)
+        st.markdown('</div>', unsafe_allow_html=True)
     with c2:
+        st.markdown('<div class="soft-card">', unsafe_allow_html=True)
         st.subheader("微量肥名单")
+        st.caption("第二阶段微量元素直接求解时允许参与。")
         st.write(MICRO_FERTILIZERS)
+        st.markdown('</div>', unsafe_allow_html=True)
 
 # Tab：调酸设置
 with tab_acid:
+    st.markdown('<div class="soft-card">', unsafe_allow_html=True)
     st.header("💧 调酸设置")
     acid_mode = st.selectbox("调酸模式", ["不调酸", "调酸"], index=0, key="acid_mode")
     target_pH = st.slider("目标 pH", 4.0, 7.0, 5.5, 0.1, key="target_pH")
@@ -693,15 +903,21 @@ with tab_acid:
             st.dataframe(pd.DataFrame(acid_detail_rows), use_container_width=True, hide_index=True)
         else:
             st.warning("⚠️ 已开启调酸，但没有有效酸液比例，请设置至少一种酸的比例大于 0。")
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # Tab2：配方回测
 with tab2:
+    st.markdown('<div class="soft-card">', unsafe_allow_html=True)
+    st.subheader("配方回测")
+    st.caption("输入当前投料量，快速回测总浓度、离子平衡、成本及结构分析。")
     names = st.session_state.fert_lib.index.tolist()
     inputs = {}
     cols = st.columns(3)
     for i, n in enumerate(names):
         with cols[i % 3]:
             inputs[n] = st.number_input(f"{n}(kg)", min_value=0.0, step=0.1, key=f"t2_{n}")
+
+    st.markdown('</div>', unsafe_allow_html=True)
 
     if st.button("开始分析"):
         (
@@ -726,6 +942,7 @@ with tab2:
 
 # Tab3：结果回推
 with tab3:
+    st.markdown('<div class="soft-card">', unsafe_allow_html=True)
     st.info("💡 固定权重：Mg 优先，SO4-S 适度放松；结果显示成本；<1kg 自动显示为克。")
     st.caption("新增：K/Ca/Mg 饼图；比值=钾：钙、钾：镁、钙：磷、钙：镁。")
 
@@ -746,6 +963,10 @@ with tab3:
         "Mo": d2.number_input("目标 Mo", 0.000, 3.0, 0.0),
         "Urea-N": d1.number_input("目标 Urea-N", 0.00, 100.0, 0.0)
     }
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    st.subheader("开始计算")
+    st.caption("点击后将依次完成大量元素求解、微量元素求解，并输出配方、成本与结构分析。")
 
     if st.button("🚀 求解最优投料"):
         lib = st.session_state.fert_lib.fillna(0.0).to_dict('index')
@@ -887,4 +1108,4 @@ with tab3:
             styled_micro_df = micro_df.style.map(color_deviation, subset=['%偏差']).format({"%偏差": "{}"}).set_properties(**{'text-align': 'center'})
             st.dataframe(styled_micro_df, use_container_width=True, hide_index=True)
 
-st.caption("百瑞 Blueberry Pro v1.9 | 含价格、成本、克显示、1~5吨投料表、K/Ca/Mg饼图与比值")
+st.caption("百瑞 Blueberry Pro v1.9 | 现代化排版 | 含价格、成本、克显示、1~5吨投料表、K/Ca/Mg饼图与比值")
