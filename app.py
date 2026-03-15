@@ -742,7 +742,7 @@ with st.sidebar:
 # ==================== 主界面 ====================
 st.markdown("""
 <div class="hero-box">
-    <div class="hero-title">🧪 营养液计算系统 v1.9</div>
+    <div class="hero-title">🧪 营养液计算系统 v1.1
     <div class="hero-subtitle">
         
     </div>
