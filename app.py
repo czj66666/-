@@ -744,9 +744,6 @@ st.markdown("""
 <div class="hero-box">
     <div class="hero-title">🧪 营养液计算系统 v1.1
     <div class="hero-subtitle">
-        
-    </div>
-</div>
 """, unsafe_allow_html=True)
 
 tab1, tab_acid, tab2, tab3 = st.tabs([
