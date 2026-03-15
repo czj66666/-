@@ -7,7 +7,7 @@ import datetime
 from openpyxl import Workbook
 
 # ==================== 页面配置 ====================
-st.set_page_config(page_title="Blueberry Pro v1.6", layout="wide")
+st.set_page_config(page_title="Blueberry Pro v1.7", layout="wide")
 
 st.markdown("""
 <style>
@@ -62,6 +62,13 @@ if 'fert_lib' not in st.session_state:
     }
     st.session_state.fert_lib = pd.DataFrame.from_dict(init_data, orient='index', columns=cols).fillna(0.0)
 
+# 统一名称，修复历史版本空格不一致
+st.session_state.fert_lib.index = (
+    st.session_state.fert_lib.index
+    .str.replace(r"\s+", " ", regex=True)
+    .str.strip()
+)
+
 # ==================== 基础计算函数 ====================
 def calc_fertilizer_only(inputs, vol, rate):
     lib = st.session_state.fert_lib.fillna(0.0).to_dict('index')
@@ -70,7 +77,7 @@ def calc_fertilizer_only(inputs, vol, rate):
 
     for name, kg in inputs.items():
         if name in lib and kg > 0:
-            factor = (kg * 1000000 * rate) / vol
+            factor = (kg * 1_000_000 * rate) / vol
             for col in ppm.keys():
                 ppm[col] += factor * float(lib[name][col])
     return ppm
@@ -184,7 +191,7 @@ def get_water_for_calc(w_data, dosing_rate, tank_vol):
                     "中和碱度(meq/L)": round(acid_meq, 3),
                     "用量(ml/m³)": round(ml_per_m3, 2),
                     "单桶加酸(L)": round(acid_L_per_bucket, 3),
-                    f"{base['el']}增加(ppm)": round(nutrient_ppm, 2)
+                    f"{base['el']}增加(ppm)": round(nutrient_ppm, 4)
                 })
 
         water_with_acid["HCO3"] = target_residual_meq * 61.02
@@ -213,10 +220,10 @@ def build_ppm_breakdown(res, inputs, vol, rate, base_water, acid_additions):
         total_val = float(res.get(el, 0.0))
         rows.append({
             "元素": el,
-            "原水本底": round(base_val, 3),
-            "酸带入": round(acid_val, 3),
-            "肥料贡献": round(fert_val, 3),
-            "总 ppm": round(total_val, 3)
+            "原水本底": round(base_val, 4),
+            "酸带入": round(acid_val, 4),
+            "肥料贡献": round(fert_val, 4),
+            "总 ppm": round(total_val, 4)
         })
     return pd.DataFrame(rows)
 
@@ -237,21 +244,21 @@ def export_to_excel(solution_dict, acid_rows, res_df, meq, total_n, ec, sc, sa, 
     for _, row in res_df.iterrows():
         ws2.append([
             row["元素"],
-            round(row["原水本底"], 3),
-            round(row["酸带入"], 3),
-            round(row["肥料贡献"], 3),
-            round(row["总 ppm"], 3)
+            round(row["原水本底"], 4),
+            round(row["酸带入"], 4),
+            round(row["肥料贡献"], 4),
+            round(row["总 ppm"], 4)
         ])
 
     ws3 = wb.create_sheet("Ion Balance")
     ws3.append(["离子", "meq/L"])
     for k, v in meq.items():
-        ws3.append([k, round(v, 3)])
+        ws3.append([k, round(v, 4)])
     ws3.append([])
-    ws3.append(["Σ 阳离子", round(sc, 3)])
-    ws3.append(["Σ 阴离子", round(sa, 3)])
-    ws3.append(["总氮", round(total_n, 3)])
-    ws3.append(["预测EC", round(ec, 3)])
+    ws3.append(["Σ 阳离子", round(sc, 4)])
+    ws3.append(["Σ 阴离子", round(sa, 4)])
+    ws3.append(["总氮", round(total_n, 4)])
+    ws3.append(["预测EC", round(ec, 4)])
 
     ws4 = wb.create_sheet("Water Params")
     ws4.append(["参数", "数值"])
@@ -331,45 +338,20 @@ def show_results(res, tn, meq, ec, sc, sa, final_dict, base_water=None, acid_add
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
-# ==================== 优化函数：大量元素（只允许大量肥） ====================
-def solve_macro_targets(macro_targets, water_for_calc, weight_mode, balance_factor, lib, cf):
+# ==================== 优化函数：大量元素（只允许大量肥，固定权重） ====================
+def solve_macro_targets(macro_targets, water_for_calc, lib, cf):
     macro_names = [n for n in MACRO_FERTILIZERS if n in lib]
 
-    if weight_mode == "标准模式":
-        element_weights = {
-            "NO3-N": 100,
-            "NH4-N": 100,
-            "P": 100,
-            "K": 100,
-            "Ca": 100,
-            "Mg": 100,
-            "SO4-S": 10,
-            "Urea-N": 20
-        }
-    elif weight_mode == "均衡模式":
-        element_weights = {
-            "NO3-N": 100,
-            "NH4-N": 100,
-            "P": 100,
-            "K": 100,
-            "Ca": 100,
-            "Mg": 100,
-            "SO4-S": 80,
-            "Urea-N": 20
-        }
-    else:
-        element_weights = {
-            "NO3-N": 100,
-            "NH4-N": 100,
-            "P": 100,
-            "K": 100,
-            "Ca": 100,
-            "Mg": 100,
-            "SO4-S": 150,
-            "Urea-N": 20
-        }
-
-    element_weights = {k: v * balance_factor for k, v in element_weights.items()}
+    element_weights = {
+        "NO3-N": 100,
+        "NH4-N": 100,
+        "P": 100,
+        "K": 100,
+        "Ca": 100,
+        "Mg": 180,
+        "SO4-S": 20,
+        "Urea-N": 20
+    }
 
     prob_macro = pulp.LpProblem("Macro_Opt", pulp.LpMinimize)
     v_macro = {n: pulp.LpVariable(f"macro_{i}", 0, 100) for i, n in enumerate(macro_names)}
@@ -443,7 +425,7 @@ with st.sidebar:
     w_data["pH"] = st.number_input("原水 pH", min_value=0.0, max_value=14.0, value=7.0, step=0.1)
 
 # ==================== 主界面 Tabs ====================
-st.title("🧪 营养液计算系统 v1.6")
+st.title("🧪 营养液计算系统 v1.7")
 
 tab1, tab_acid, tab2, tab3 = st.tabs([
     "🏗️ 肥料库",
@@ -579,9 +561,9 @@ with tab_acid:
         c4.metric("目标残余碱度", f"{round(target_residual_meq, 2)} meq/L")
 
         add_cols = st.columns(3)
-        add_cols[0].metric("P 增加", f"{round(acid_additions_preview.get('P', 0.0), 2)} ppm")
-        add_cols[1].metric("NO3-N 增加", f"{round(acid_additions_preview.get('NO3-N', 0.0), 2)} ppm")
-        add_cols[2].metric("SO4-S 增加", f"{round(acid_additions_preview.get('SO4-S', 0.0), 2)} ppm")
+        add_cols[0].metric("P 增加", f"{round(acid_additions_preview.get('P', 0.0), 4)} ppm")
+        add_cols[1].metric("NO3-N 增加", f"{round(acid_additions_preview.get('NO3-N', 0.0), 4)} ppm")
+        add_cols[2].metric("SO4-S 增加", f"{round(acid_additions_preview.get('SO4-S', 0.0), 4)} ppm")
 
         if acid_detail_rows:
             st.subheader("各酸贡献明细")
@@ -630,9 +612,10 @@ with tab2:
             raw_water=w_data
         )
 
-# Tab3：结果回推（大量阶段只允许大量肥；微量阶段只允许微量肥，直接求解）
+# Tab3：结果回推
 with tab3:
-    st.info("💡 当前模式：第一阶段只允许大量肥；第二阶段只允许微量肥直接求解；最后自动合并。")
+    st.info("💡 当前模式：第一阶段只允许大量肥；第二阶段只允许微量肥直接求解；固定权重，无模式选择。")
+    st.caption("固定权重：Mg 优先，SO4-S 适度放松。")
 
     d1, d2, d3, d4 = st.columns(4)
     tg = {
@@ -652,18 +635,9 @@ with tab3:
         "Urea-N": d1.number_input("目标 Urea-N", 0.00, 100.0, 0.0)
     }
 
-    st.subheader("⚖️ 大量元素权重策略")
-    weight_mode = st.selectbox(
-        "选择权重模式",
-        ["标准模式", "均衡模式", "高硫模式"],
-        index=1
-    )
-    balance_factor = st.slider("均衡权重系数", 0.5, 3.0, 1.0, 0.1)
-    st.caption(f"当前权重：{weight_mode} | 均衡系数 = {balance_factor}")
-
     if st.button("🚀 求解最优投料"):
         lib = st.session_state.fert_lib.fillna(0.0).to_dict('index')
-        cf = (1000000 * dosing_rate) / tank_vol
+        cf = (1_000_000 * dosing_rate) / tank_vol
 
         (
             water_for_calc,
@@ -699,8 +673,6 @@ with tab3:
         macro_status, macro_sol, macro_weights, macro_names = solve_macro_targets(
             macro_targets=macro_targets,
             water_for_calc=water_for_calc,
-            weight_mode=weight_mode,
-            balance_factor=balance_factor,
             lib=lib,
             cf=cf
         )
@@ -764,9 +736,9 @@ with tab3:
                 pct_error = (diff / target * 100) if target > 0 else 0.0
                 comparison_data.append({
                     "元素": el,
-                    "目标 ppm": round(target, 2),
-                    "实际 ppm": round(actual_val, 2),
-                    "差值": round(diff, 2),
+                    "目标 ppm": round(target, 4),
+                    "实际 ppm": round(actual_val, 4),
+                    "差值": round(diff, 4),
                     "%偏差": f"{round(pct_error, 1)}%"
                 })
             comp_df = pd.DataFrame(comparison_data)
@@ -794,13 +766,13 @@ with tab3:
                 pct_error = (diff / target * 100) if target > 0 else 0.0
                 micro_compare.append({
                     "元素": el,
-                    "目标 ppm": round(target, 3),
-                    "最终实际 ppm": round(actual_val, 3),
-                    "差值": round(diff, 3),
+                    "目标 ppm": round(target, 4),
+                    "最终实际 ppm": round(actual_val, 4),
+                    "差值": round(diff, 4),
                     "%偏差": f"{round(pct_error, 1)}%"
                 })
             micro_df = pd.DataFrame(micro_compare)
             styled_micro_df = micro_df.style.map(color_deviation, subset=['%偏差']).format({"%偏差": "{}"}).set_properties(**{'text-align': 'center'})
             st.dataframe(styled_micro_df, use_container_width=True, hide_index=True)
 
-st.caption("百瑞 Blueberry Pro v1.6 | 大量阶段仅大量肥，微量阶段仅微量肥直接求解")
+st.caption("百瑞 Blueberry Pro v1.2")
