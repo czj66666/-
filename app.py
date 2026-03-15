@@ -7,7 +7,7 @@ import datetime
 from openpyxl import Workbook
 
 # ==================== 页面配置 ====================
-st.set_page_config(page_title="Blueberry Pro v1.7", layout="wide")
+st.set_page_config(page_title="Blueberry Pro v1.8", layout="wide")
 
 st.markdown("""
 <style>
@@ -42,23 +42,23 @@ MICRO_FERTILIZERS = [
 
 # ==================== 初始化肥料库 ====================
 if 'fert_lib' not in st.session_state:
-    cols = ["NO3-N","NH4-N","P","K","Mg","Ca","Fe","SO4-S","Mn","Zn","Cu","B","Mo","Urea-N"]
+    cols = ["NO3-N","NH4-N","P","K","Mg","Ca","Fe","SO4-S","Mn","Zn","Cu","B","Mo","Urea-N","价格(元/kg)"]
     init_data = {
-        "Urea 尿素": [0,0,0,0,0,0,0,0,0,0,0,0,0,0.46],
-        "MAP 磷酸一铵": [0,0.12,0.266,0,0,0,0,0,0,0,0,0,0,0],
-        "MKP 磷酸二氢钾": [0,0,0.227,0.299,0,0,0,0,0,0,0,0,0,0],
-        "KNO3 硝酸钾": [0.135,0,0,0.38,0,0,0,0,0,0,0,0,0,0],
-        "K2SO4 硫酸钾": [0,0,0,0.446,0,0,0,0.18,0,0,0,0,0,0],
-        "Mg(NO3)2 硝酸镁": [0.10,0,0,0,0.09,0,0,0,0,0,0,0,0,0],
-        "MgSO4 硫酸镁": [0,0,0,0,0.095,0,0,0.125,0,0,0,0,0,0],
-        "Ca(NO3)2 硝酸钙": [0.11,0,0,0,0,0.16,0,0,0,0,0,0,0,0],
-        "AmSulphate 硫酸铵": [0,0.21,0,0,0,0,0,0.24,0,0,0,0,0,0],
-        "Iron 螯合铁": [0,0,0,0,0,0,0.13,0,0,0,0,0,0,0],
-        "MnSO4 硫酸锰": [0,0,0,0,0,0,0,0.18,0.31,0,0,0,0,0],
-        "ZnSO4 硫酸锌": [0,0,0,0,0,0,0,0.17,0,0.35,0,0,0,0],
-        "Borax 硼砂": [0,0,0,0,0,0,0,0,0,0,0,0.11,0,0],
-        "Mo 钼酸铵": [0,0,0,0,0,0,0,0,0,0,0,0,0.42,0],
-        "CuSO4·5H2O 硫酸铜": [0,0,0,0,0,0,0,0.128,0,0,0.255,0,0,0],
+        "Urea 尿素": [0,0,0,0,0,0,0,0,0,0,0,0,0,0.46,2.5],
+        "MAP 磷酸一铵": [0,0.12,0.266,0,0,0,0,0,0,0,0,0,0,0,4.5],
+        "MKP 磷酸二氢钾": [0,0,0.227,0.299,0,0,0,0,0,0,0,0,0,0,8.0],
+        "KNO3 硝酸钾": [0.135,0,0,0.38,0,0,0,0,0,0,0,0,0,0,6.0],
+        "K2SO4 硫酸钾": [0,0,0,0.446,0,0,0,0.18,0,0,0,0,0,0,4.8],
+        "Mg(NO3)2 硝酸镁": [0.10,0,0,0,0.09,0,0,0,0,0,0,0,0,0,5.5],
+        "MgSO4 硫酸镁": [0,0,0,0,0.095,0,0,0.125,0,0,0,0,0,0,2.2],
+        "Ca(NO3)2 硝酸钙": [0.11,0,0,0,0,0.16,0,0,0,0,0,0,0,0,3.8],
+        "AmSulphate 硫酸铵": [0,0.21,0,0,0,0,0,0.24,0,0,0,0,0,0,1.8],
+        "Iron 螯合铁": [0,0,0,0,0,0,0.13,0,0,0,0,0,0,0,28.0],
+        "MnSO4 硫酸锰": [0,0,0,0,0,0,0,0.18,0.31,0,0,0,0,0,9.0],
+        "ZnSO4 硫酸锌": [0,0,0,0,0,0,0,0.17,0,0.35,0,0,0,0,10.0],
+        "Borax 硼砂": [0,0,0,0,0,0,0,0,0,0,0,0.11,0,0,7.0],
+        "Mo 钼酸铵": [0,0,0,0,0,0,0,0,0,0,0,0,0.42,0,65.0],
+        "CuSO4·5H2O 硫酸铜": [0,0,0,0,0,0,0,0.128,0,0,0.255,0,0,0,12.0],
     }
     st.session_state.fert_lib = pd.DataFrame.from_dict(init_data, orient='index', columns=cols).fillna(0.0)
 
@@ -69,10 +69,44 @@ st.session_state.fert_lib.index = (
     .str.strip()
 )
 
+# ==================== 工具函数 ====================
+def format_weight(kg):
+    if kg < 1:
+        return f"{round(kg * 1000, 1)} g"
+    return f"{round(kg, 4)} kg"
+
+def calc_total_cost(solution_dict):
+    lib = st.session_state.fert_lib.fillna(0.0)
+    total_cost = 0.0
+    rows = []
+    for name, kg in solution_dict.items():
+        price = float(lib.loc[name, "价格(元/kg)"]) if name in lib.index and "价格(元/kg)" in lib.columns else 0.0
+        cost = kg * price
+        total_cost += cost
+        rows.append({
+            "肥料": name,
+            "投料": format_weight(kg),
+            "原始kg": round(kg, 6),
+            "单价(元/kg)": round(price, 4),
+            "成本(元)": round(cost, 4)
+        })
+    return total_cost, pd.DataFrame(rows)
+
+def build_tonnage_table(solution_dict):
+    rows = []
+    for water_ton in [1, 2, 3, 4, 5]:
+        scale = water_ton
+        row = {"水量": f"{water_ton} 吨"}
+        for name, kg in solution_dict.items():
+            amount = kg * scale
+            row[name] = format_weight(amount)
+        rows.append(row)
+    return pd.DataFrame(rows)
+
 # ==================== 基础计算函数 ====================
 def calc_fertilizer_only(inputs, vol, rate):
     lib = st.session_state.fert_lib.fillna(0.0).to_dict('index')
-    all_cols = st.session_state.fert_lib.columns.tolist()
+    all_cols = [c for c in st.session_state.fert_lib.columns.tolist() if c != "价格(元/kg)"]
     ppm = {col: 0.0 for col in all_cols}
 
     for name, kg in inputs.items():
@@ -84,7 +118,7 @@ def calc_fertilizer_only(inputs, vol, rate):
 
 def safe_calc(inputs, vol, rate, water, ec_factor):
     ppm = calc_fertilizer_only(inputs, vol, rate)
-    all_cols = st.session_state.fert_lib.columns.tolist()
+    all_cols = [c for c in st.session_state.fert_lib.columns.tolist() if c not in ["价格(元/kg)"]]
 
     res = {col: ppm[col] + water.get(col, 0.0) for col in all_cols if col != "Urea-N"}
     res["Urea-N"] = ppm["Urea-N"]
@@ -230,14 +264,19 @@ def build_ppm_breakdown(res, inputs, vol, rate, base_water, acid_additions):
 def export_to_excel(solution_dict, acid_rows, res_df, meq, total_n, ec, sc, sa, raw_water=None):
     wb = Workbook()
 
+    total_cost, cost_df = calc_total_cost(solution_dict)
+    tonnage_df = build_tonnage_table(solution_dict)
+
     ws1 = wb.active
     ws1.title = "Fertilizer Plan"
-    ws1.append(["类别", "名称", "投料量", "单位"])
-    for k, v in solution_dict.items():
-        ws1.append(["肥料", k, round(v, 4), "kg"])
+    ws1.append(["类别", "名称", "投料量", "单位", "单价(元/kg)", "成本(元)"])
+    for _, row in cost_df.iterrows():
+        ws1.append(["肥料", row["肥料"], row["投料"], "", row["单价(元/kg)"], row["成本(元)"]])
     if acid_rows:
         for row in acid_rows:
-            ws1.append(["酸液", f"{row['酸种']} {row['浓度']}", round(row["单桶加酸(L)"], 4), "L"])
+            ws1.append(["酸液", f"{row['酸种']} {row['浓度']}", round(row["单桶加酸(L)"], 4), "L", "", ""])
+    ws1.append([])
+    ws1.append(["总成本", "", "", "", "", round(total_cost, 4)])
 
     ws2 = wb.create_sheet("Element PPM")
     ws2.append(["元素", "原水本底", "酸带入", "肥料贡献", "总 ppm"])
@@ -266,6 +305,12 @@ def export_to_excel(solution_dict, acid_rows, res_df, meq, total_n, ec, sc, sa, 
         for k, v in raw_water.items():
             ws4.append([k, v])
 
+    ws5 = wb.create_sheet("1to5Ton Dose")
+    headers = tonnage_df.columns.tolist()
+    ws5.append(headers)
+    for _, row in tonnage_df.iterrows():
+        ws5.append(row.tolist())
+
     return wb
 
 def show_results(res, tn, meq, ec, sc, sa, final_dict, base_water=None, acid_additions=None, acid_rows=None, raw_water=None):
@@ -285,12 +330,16 @@ def show_results(res, tn, meq, ec, sc, sa, final_dict, base_water=None, acid_add
         acid_additions=acid_additions
     )
 
-    c1, c2, c3, c4, c5 = st.columns(5)
+    total_cost, cost_df = calc_total_cost(final_dict)
+    tonnage_df = build_tonnage_table(final_dict)
+
+    c1, c2, c3, c4, c5, c6 = st.columns(6)
     c1.metric("总氮", f"{round(tn,1)} ppm")
     c2.metric("预测 EC", f"{round(ec,2)}")
     c3.metric("Σ 阳", round(sc,2))
     c4.metric("Σ 阴", round(sa,2))
     c5.metric("电荷差", round(sc-sa,2))
+    c6.metric("总成本", f"{round(total_cost,2)} 元")
 
     st.divider()
     l, r = st.columns([1, 1.2])
@@ -300,17 +349,32 @@ def show_results(res, tn, meq, ec, sc, sa, final_dict, base_water=None, acid_add
         st.dataframe(df_res, use_container_width=True, hide_index=True)
 
         st.subheader("投料方案")
-        plan_rows = [{"类别": "肥料", "名称": k, "投料量": round(v, 4), "单位": "kg"} for k, v in final_dict.items()]
+        plan_rows = []
+        for name, kg in final_dict.items():
+            price = float(st.session_state.fert_lib.loc[name, "价格(元/kg)"]) if name in st.session_state.fert_lib.index else 0.0
+            plan_rows.append({
+                "类别": "肥料",
+                "名称": name,
+                "投料量": format_weight(kg),
+                "单价(元/kg)": round(price, 4),
+                "成本(元)": round(kg * price, 4)
+            })
+
         if acid_rows:
             for row in acid_rows:
                 plan_rows.append({
                     "类别": "酸液",
                     "名称": f"{row['酸种']} {row['浓度']}",
-                    "投料量": round(row["单桶加酸(L)"], 4),
-                    "单位": "L"
+                    "投料量": f"{round(row['单桶加酸(L)'], 4)} L",
+                    "单价(元/kg)": "",
+                    "成本(元)": ""
                 })
+
         plan_df = pd.DataFrame(plan_rows)
         st.dataframe(plan_df, use_container_width=True, hide_index=True)
+
+        st.subheader("1 吨到 5 吨水投料表")
+        st.dataframe(tonnage_df, use_container_width=True, hide_index=True)
 
     with r:
         fig = go.Figure(data=[
@@ -321,6 +385,10 @@ def show_results(res, tn, meq, ec, sc, sa, final_dict, base_water=None, acid_add
         ])
         fig.update_layout(height=350, barmode='group')
         st.plotly_chart(fig, use_container_width=True)
+
+        st.subheader("成本明细")
+        show_cost_df = cost_df[["肥料", "投料", "单价(元/kg)", "成本(元)"]].copy()
+        st.dataframe(show_cost_df, use_container_width=True, hide_index=True)
 
         if acid_rows:
             st.subheader("酸液明细")
@@ -425,7 +493,7 @@ with st.sidebar:
     w_data["pH"] = st.number_input("原水 pH", min_value=0.0, max_value=14.0, value=7.0, step=0.1)
 
 # ==================== 主界面 Tabs ====================
-st.title("🧪 营养液计算系统 v1.7")
+st.title("🧪 营养液计算系统 v1.8")
 
 tab1, tab_acid, tab2, tab3 = st.tabs([
     "🏗️ 肥料库",
@@ -573,13 +641,6 @@ with tab_acid:
     else:
         st.success("✅ 不调酸，无需添加酸液")
 
-    st.caption(
-        f"✅ 当前设置：模式={acid_mode} | 目标pH={target_pH} | "
-        f"残余碱度={round(target_residual_meq,2)} meq/L | "
-        f"HCO3={round(w_data_calc_preview.get('HCO3',0.0),1)} ppm"
-    )
-    st.warning("⚠️ 实际调酸受水温、缓冲体系和有机质影响，建议先做小杯滴定实验验证。")
-
 # Tab2：配方回测
 with tab2:
     names = st.session_state.fert_lib.index.tolist()
@@ -588,8 +649,6 @@ with tab2:
     for i, n in enumerate(names):
         with cols[i % 3]:
             inputs[n] = st.number_input(f"{n}(kg)", min_value=0.0, step=0.1, key=f"t2_{n}")
-
-    st.info("💡 调酸参数已在【💧 调酸设置】页统一设置，点击下方按钮即可使用最新参数")
 
     if st.button("开始分析"):
         (
@@ -614,8 +673,7 @@ with tab2:
 
 # Tab3：结果回推
 with tab3:
-    st.info("💡 当前模式：第一阶段只允许大量肥；第二阶段只允许微量肥直接求解；固定权重，无模式选择。")
-    st.caption("固定权重：Mg 优先，SO4-S 适度放松。")
+    st.info("💡 固定权重：Mg 优先，SO4-S 适度放松；结果显示成本；<1kg 自动显示为克。")
 
     d1, d2, d3, d4 = st.columns(4)
     tg = {
@@ -698,19 +756,19 @@ with tab3:
             c3.metric("最终投料肥料数", len(final_sol))
 
             st.subheader("第一阶段：大量元素方案（仅大量肥）")
-            st.caption(f"允许肥料：{', '.join(macro_names)}")
             if macro_sol:
-                macro_df = pd.DataFrame(list(macro_sol.items()), columns=["肥料", "投料 kg"])
-                macro_df["投料 kg"] = macro_df["投料 kg"].round(4)
+                macro_df = pd.DataFrame({
+                    "肥料": list(macro_sol.keys()),
+                    "投料量": [format_weight(v) for v in macro_sol.values()]
+                })
                 st.dataframe(macro_df, use_container_width=True, hide_index=True)
-            else:
-                st.info("大量元素阶段无投料结果。")
 
             st.subheader("第二阶段：微量元素方案（仅微量肥，直接求解）")
-            st.caption(f"允许肥料：{', '.join(micro_names)}")
             if micro_sol:
-                micro_df = pd.DataFrame(list(micro_sol.items()), columns=["肥料", "投料 kg"])
-                micro_df["投料 kg"] = micro_df["投料 kg"].round(4)
+                micro_df = pd.DataFrame({
+                    "肥料": list(micro_sol.keys()),
+                    "投料量": [format_weight(v) for v in micro_sol.values()]
+                })
                 st.dataframe(micro_df, use_container_width=True, hide_index=True)
             else:
                 if micro_status in ['Infeasible', 'Undefined', 'Unbounded']:
@@ -775,4 +833,4 @@ with tab3:
             styled_micro_df = micro_df.style.map(color_deviation, subset=['%偏差']).format({"%偏差": "{}"}).set_properties(**{'text-align': 'center'})
             st.dataframe(styled_micro_df, use_container_width=True, hide_index=True)
 
-st.caption("百瑞 Blueberry Pro v1.7 | 固定权重 | 大量阶段仅大量肥，微量阶段仅微量肥直接求解")
+st.caption("百瑞 Blueberry Pro v1.8 | 含价格、成本、克显示、1~5吨投料表")
