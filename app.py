@@ -775,4 +775,4 @@ with tab3:
             styled_micro_df = micro_df.style.map(color_deviation, subset=['%偏差']).format({"%偏差": "{}"}).set_properties(**{'text-align': 'center'})
             st.dataframe(styled_micro_df, use_container_width=True, hide_index=True)
 
-st.caption("百瑞 Blueberry Pro v1.2")
+st.caption("百瑞 Blueberry Pro v1.7 | 固定权重 | 大量阶段仅大量肥，微量阶段仅微量肥直接求解")
