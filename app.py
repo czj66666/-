@@ -7,7 +7,7 @@ import datetime
 from openpyxl import Workbook
 
 # ==================== 页面配置 ====================
-st.set_page_config(page_title="Blueberry Pro v1.3", layout="wide")
+st.set_page_config(page_title="Blueberry Pro v1.4", layout="wide")
 
 st.markdown("""
 <style>
@@ -35,13 +35,13 @@ if 'fert_lib' not in st.session_state:
         "MnSO4 硫酸锰": [0,0,0,0,0,0,0,0.18,0.31,0,0,0,0,0],
         "ZnSO4 硫酸锌": [0,0,0,0,0,0,0,0.17,0,0.35,0,0,0,0],
         "Borax 硼砂": [0,0,0,0,0,0,0,0,0,0,0,0.11,0,0],
-        "Mo  钼酸铵": [0,0,0,0,0,0,0,0,0,0,0,0,0.42,0],
+        "Mo 钼酸铵": [0,0,0,0,0,0,0,0,0,0,0,0,0.42,0],
         "CuSO4·5H2O 硫酸铜": [0,0,0,0,0,0,0,0.128,0,0,0.255,0,0,0],
     }
     st.session_state.fert_lib = pd.DataFrame.from_dict(init_data, orient='index', columns=cols).fillna(0.0)
 
-# ==================== 核心函数 ====================
-def safe_calc(inputs, vol, rate, water, ec_factor):
+# ==================== 基础计算函数 ====================
+def calc_fertilizer_only(inputs, vol, rate):
     lib = st.session_state.fert_lib.fillna(0.0).to_dict('index')
     all_cols = st.session_state.fert_lib.columns.tolist()
     ppm = {col: 0.0 for col in all_cols}
@@ -51,6 +51,11 @@ def safe_calc(inputs, vol, rate, water, ec_factor):
             factor = (kg * 1000000 * rate) / vol
             for col in ppm.keys():
                 ppm[col] += factor * float(lib[name][col])
+    return ppm
+
+def safe_calc(inputs, vol, rate, water, ec_factor):
+    ppm = calc_fertilizer_only(inputs, vol, rate)
+    all_cols = st.session_state.fert_lib.columns.tolist()
 
     res = {col: ppm[col] + water.get(col, 0.0) for col in all_cols if col != "Urea-N"}
     res["Urea-N"] = ppm["Urea-N"]
@@ -175,17 +180,9 @@ def get_water_for_calc(w_data, dosing_rate, tank_vol):
         acid_detail_rows
     )
 
+# ==================== 显示与导出 ====================
 def build_ppm_breakdown(res, inputs, vol, rate, base_water, acid_additions):
-    lib = st.session_state.fert_lib.fillna(0.0).to_dict('index')
-    all_cols = st.session_state.fert_lib.columns.tolist()
-    fert_ppm = {col: 0.0 for col in all_cols}
-
-    for name, kg in inputs.items():
-        if name in lib and kg > 0:
-            factor = (kg * 1000000 * rate) / vol
-            for col in fert_ppm.keys():
-                fert_ppm[col] += factor * float(lib[name][col])
-
+    fert_ppm = calc_fertilizer_only(inputs, vol, rate)
     rows = []
     for el in res.keys():
         base_val = 0.0 if el == "Urea-N" else float(base_water.get(el, 0.0))
@@ -312,6 +309,106 @@ def show_results(res, tn, meq, ec, sc, sa, final_dict, base_water=None, acid_add
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
+# ==================== 优化函数：大量元素 ====================
+def solve_macro_targets(macro_targets, water_for_calc, weight_mode, balance_factor, names, lib, cf):
+    if weight_mode == "标准模式":
+        element_weights = {
+            "NO3-N": 100,
+            "NH4-N": 100,
+            "P": 100,
+            "K": 100,
+            "Ca": 100,
+            "Mg": 100,
+            "SO4-S": 10,
+            "Urea-N": 20
+        }
+    elif weight_mode == "均衡模式":
+        element_weights = {
+            "NO3-N": 100,
+            "NH4-N": 100,
+            "P": 100,
+            "K": 100,
+            "Ca": 100,
+            "Mg": 100,
+            "SO4-S": 80,
+            "Urea-N": 20
+        }
+    else:
+        element_weights = {
+            "NO3-N": 100,
+            "NH4-N": 100,
+            "P": 100,
+            "K": 100,
+            "Ca": 100,
+            "Mg": 100,
+            "SO4-S": 150,
+            "Urea-N": 20
+        }
+
+    element_weights = {k: v * balance_factor for k, v in element_weights.items()}
+
+    prob_macro = pulp.LpProblem("Macro_Opt", pulp.LpMinimize)
+    v_macro = {n: pulp.LpVariable(f"macro_{i}", 0, 100) for i, n in enumerate(names)}
+    s_macro = {el: pulp.LpVariable(f"sm_{el}", 0) for el in macro_targets.keys()}
+
+    penalty_macro = 0
+    for el, target_val in macro_targets.items():
+        actual = pulp.lpSum([v_macro[n] * cf * float(lib[n][el]) for n in names])
+        net_target = max(0, target_val - water_for_calc.get(el, 0.0))
+        prob_macro += actual - net_target <= s_macro[el]
+        prob_macro += net_target - actual <= s_macro[el]
+        penalty_macro += s_macro[el] * element_weights.get(el, 1)
+
+    prob_macro += pulp.lpSum([v_macro[n] for n in names]) * 0.01 + penalty_macro
+    prob_macro.solve(pulp.PULP_CBC_CMD(msg=False))
+
+    status = pulp.LpStatus[prob_macro.status]
+    if status in ['Infeasible', 'Undefined', 'Unbounded']:
+        return status, {}, element_weights
+
+    macro_sol = {n: pulp.value(v_macro[n]) for n in names if pulp.value(v_macro[n]) and pulp.value(v_macro[n]) > 0.001}
+    return status, macro_sol, element_weights
+
+# ==================== 优化函数：微量元素 ====================
+def solve_micro_targets(micro_targets, background_water, macro_sol, names, lib, cf):
+    macro_fert_ppm = calc_fertilizer_only(macro_sol, tank_vol, dosing_rate)
+
+    micro_elements = ["Fe", "Mn", "Zn", "Cu", "B", "Mo"]
+    micro_names = [n for n in names if any(float(lib[n][el]) > 0 for el in micro_elements)]
+
+    prob_micro = pulp.LpProblem("Micro_Opt", pulp.LpMinimize)
+    v_micro = {n: pulp.LpVariable(f"micro_{i}", 0, 100) for i, n in enumerate(micro_names)}
+    s_micro = {el: pulp.LpVariable(f"sc_{el}", 0) for el in micro_targets.keys()}
+
+    micro_weights = {
+        "Fe": 1000,
+        "Mn": 1000,
+        "Zn": 1000,
+        "Cu": 1000,
+        "B": 1000,
+        "Mo": 1000
+    }
+
+    penalty_micro = 0
+    for el, target_val in micro_targets.items():
+        background_val = background_water.get(el, 0.0) + macro_fert_ppm.get(el, 0.0)
+        net_target = max(0, target_val - background_val)
+        actual = pulp.lpSum([v_micro[n] * cf * float(lib[n][el]) for n in micro_names])
+
+        prob_micro += actual - net_target <= s_micro[el]
+        prob_micro += net_target - actual <= s_micro[el]
+        penalty_micro += s_micro[el] * micro_weights.get(el, 1)
+
+    prob_micro += pulp.lpSum([v_micro[n] for n in micro_names]) * 0.001 + penalty_micro
+    prob_micro.solve(pulp.PULP_CBC_CMD(msg=False))
+
+    status = pulp.LpStatus[prob_micro.status]
+    if status in ['Infeasible', 'Undefined', 'Unbounded']:
+        return status, {}, macro_fert_ppm
+
+    micro_sol = {n: pulp.value(v_micro[n]) for n in micro_names if pulp.value(v_micro[n]) and pulp.value(v_micro[n]) > 0.001}
+    return status, micro_sol, macro_fert_ppm
+
 # ==================== 侧边栏（系统参数 + 原水数据） ====================
 with st.sidebar:
     st.header("⚙️ 系统参数")
@@ -322,13 +419,13 @@ with st.sidebar:
     st.divider()
     st.header("💧 原水数据")
     w_elements = ["NO3-N","NH4-N","P","K","Ca","Mg","SO4-S","Fe","Mn","Zn","Cu","B","Mo"]
-    w_data = {el: st.number_input(el, min_value=0.0, value=0.0, step=0.1) for el in w_elements}
+    w_data = {el: st.number_input(el, min_value=0.0, value=0.0, step=0.1, key=f"w_{el}") for el in w_elements}
     w_data["HCO3"] = st.number_input("HCO3 (碳酸氢根) ppm", min_value=0.0, value=0.0, step=1.0)
     w_data["EC"] = st.number_input("原水 EC", min_value=0.0, value=0.05, step=0.01)
     w_data["pH"] = st.number_input("原水 pH", min_value=0.0, max_value=14.0, value=7.0, step=0.1)
 
 # ==================== 主界面 Tabs ====================
-st.title("🧪 营养液计算系统 v1.3")
+st.title("🧪 营养液计算系统 v1.4")
 
 tab1, tab_acid, tab2, tab3 = st.tabs([
     "🏗️ 肥料库",
@@ -374,7 +471,6 @@ with tab_acid:
             })
 
         delete_idx = None
-
         for i, acid in enumerate(st.session_state.acid_list):
             st.markdown(f"**酸液 {i+1}**")
             c1, c2, c3, c4, c5 = st.columns([2.2, 1.4, 1.2, 1.0, 0.8])
@@ -507,9 +603,9 @@ with tab2:
             raw_water=w_data
         )
 
-# Tab3：结果回推（微量元素锁死不参与优化）
+# Tab3：结果回推（大量元素与微量元素分开求解）
 with tab3:
-    st.info("💡 结果回推当前模式：仅优化大量元素；微量元素锁死不参与优化，只显示最终计算结果。")
+    st.info("💡 当前模式：先求解大量元素，再单独求解微量元素，最后自动合并方案。")
 
     d1, d2, d3, d4 = st.columns(4)
     tg = {
@@ -520,79 +616,28 @@ with tab3:
         "Ca": d3.number_input("目标 Ca", 0.0, 200.0, 80.0),
         "Mg": d3.number_input("目标 Mg", 0.0, 100.0, 30.0),
         "SO4-S": d4.number_input("目标 SO4-S", 0.0, 200.0, 40.0),
-        "Fe": d4.number_input("目标 Fe", 0.000, 10.0, 0.0, disabled=True),
-        "Mn": d1.number_input("目标 Mn", 0.000, 7.0, 0.0, disabled=True),
-        "Zn": d2.number_input("目标 Zn", 0.000, 5.0, 0.0, disabled=True),
-        "Cu": d3.number_input("目标 Cu", 0.000, 3.0, 0.0, disabled=True),
-        "B": d4.number_input("目标 B", 0.000, 8.0, 0.0, disabled=True),
-        "Mo": d2.number_input("目标 Mo", 0.000, 3.0, 0.0, disabled=True),
+        "Fe": d4.number_input("目标 Fe", 0.000, 10.0, 0.0),
+        "Mn": d1.number_input("目标 Mn", 0.000, 7.0, 0.0),
+        "Zn": d2.number_input("目标 Zn", 0.000, 5.0, 0.0),
+        "Cu": d3.number_input("目标 Cu", 0.000, 3.0, 0.0),
+        "B": d4.number_input("目标 B", 0.000, 8.0, 0.0),
+        "Mo": d2.number_input("目标 Mo", 0.000, 3.0, 0.0),
         "Urea-N": d1.number_input("目标 Urea-N", 0.00, 100.0, 0.0)
     }
 
-    st.subheader("⚖️ 权重策略（仅大量元素）")
+    st.subheader("⚖️ 大量元素权重策略")
     weight_mode = st.selectbox(
         "选择权重模式",
         ["标准模式", "均衡模式", "高硫模式"],
         index=1
     )
     balance_factor = st.slider("均衡权重系数", 0.5, 3.0, 1.0, 0.1)
-
-    if weight_mode == "标准模式":
-        element_weights = {
-            "NO3-N": 100,
-            "NH4-N": 100,
-            "P": 100,
-            "K": 100,
-            "Ca": 100,
-            "Mg": 100,
-            "SO4-S": 10,
-            "Urea-N": 20
-        }
-    elif weight_mode == "均衡模式":
-        element_weights = {
-            "NO3-N": 100,
-            "NH4-N": 100,
-            "P": 100,
-            "K": 100,
-            "Ca": 100,
-            "Mg": 100,
-            "SO4-S": 80,
-            "Urea-N": 20
-        }
-    else:
-        element_weights = {
-            "NO3-N": 100,
-            "NH4-N": 100,
-            "P": 100,
-            "K": 100,
-            "Ca": 100,
-            "Mg": 100,
-            "SO4-S": 150,
-            "Urea-N": 20
-        }
-
-    element_weights = {k: v * balance_factor for k, v in element_weights.items()}
-
     st.caption(f"当前权重：{weight_mode} | 均衡系数 = {balance_factor}")
 
-    macro_targets = {
-        "NO3-N": tg["NO3-N"],
-        "NH4-N": tg["NH4-N"],
-        "P": tg["P"],
-        "K": tg["K"],
-        "Ca": tg["Ca"],
-        "Mg": tg["Mg"],
-        "SO4-S": tg["SO4-S"],
-        "Urea-N": tg["Urea-N"]
-    }
-
     if st.button("🚀 求解最优投料"):
-        prob = pulp.LpProblem("Opt", pulp.LpMinimize)
         names = st.session_state.fert_lib.index.tolist()
-        v = {n: pulp.LpVariable(f"id_{i}", 0, 100) for i, n in enumerate(names)}
-        slacks = {el: pulp.LpVariable(f"s_{el}", 0) for el in macro_targets.keys()}
-        cf = (1000000 * dosing_rate) / tank_vol
         lib = st.session_state.fert_lib.fillna(0.0).to_dict('index')
+        cf = (1000000 * dosing_rate) / tank_vol
 
         (
             water_for_calc,
@@ -605,28 +650,81 @@ with tab3:
             acid_detail_rows
         ) = get_water_for_calc(w_data, dosing_rate, tank_vol)
 
-        penalty = 0
-        for el, target_val in macro_targets.items():
-            actual = pulp.lpSum([v[n] * cf * float(lib[n][el]) for n in names])
-            net_target = max(0, target_val - water_for_calc.get(el, 0.0))
-            prob += actual - net_target <= slacks[el]
-            prob += net_target - actual <= slacks[el]
-            penalty += slacks[el] * element_weights.get(el, 1)
+        macro_targets = {
+            "NO3-N": tg["NO3-N"],
+            "NH4-N": tg["NH4-N"],
+            "P": tg["P"],
+            "K": tg["K"],
+            "Ca": tg["Ca"],
+            "Mg": tg["Mg"],
+            "SO4-S": tg["SO4-S"],
+            "Urea-N": tg["Urea-N"]
+        }
 
-        prob += pulp.lpSum([v[n] for n in names]) * 0.01 + penalty
-        prob.solve(pulp.PULP_CBC_CMD(msg=False))
+        micro_targets = {
+            "Fe": tg["Fe"],
+            "Mn": tg["Mn"],
+            "Zn": tg["Zn"],
+            "Cu": tg["Cu"],
+            "B": tg["B"],
+            "Mo": tg["Mo"]
+        }
 
-        if pulp.LpStatus[prob.status] not in ['Infeasible', 'Undefined', 'Unbounded']:
-            sol = {n: pulp.value(v[n]) for n in names if pulp.value(v[n]) and pulp.value(v[n]) > 0.001}
-            st.success("✅ 已生成最接近目标的优化方案")
+        macro_status, macro_sol, macro_weights = solve_macro_targets(
+            macro_targets=macro_targets,
+            water_for_calc=water_for_calc,
+            weight_mode=weight_mode,
+            balance_factor=balance_factor,
+            names=names,
+            lib=lib,
+            cf=cf
+        )
 
-            sol_df = pd.DataFrame(list(sol.items()), columns=["肥料", "投料 kg"])
-            sol_df["投料 kg"] = sol_df["投料 kg"].round(4)
-            st.dataframe(sol_df, use_container_width=True, hide_index=True)
+        if macro_status in ['Infeasible', 'Undefined', 'Unbounded']:
+            st.error("❌ 大量元素无解，请调整目标值、酸方案或肥料库。")
+        else:
+            micro_status, micro_sol, macro_fert_ppm = solve_micro_targets(
+                micro_targets=micro_targets,
+                background_water=water_for_calc,
+                macro_sol=macro_sol,
+                names=names,
+                lib=lib,
+                cf=cf
+            )
 
-            r, tn, m, e, sc, sa = safe_calc(sol, tank_vol, dosing_rate, water_for_calc, ec_calib)
+            final_sol = dict(macro_sol)
+            for k, v in micro_sol.items():
+                final_sol[k] = final_sol.get(k, 0.0) + v
+
+            st.success("✅ 已完成：大量元素与微量元素分阶段独立求解")
+
+            c1, c2, c3 = st.columns(3)
+            c1.metric("大量元素阶段肥料数", len(macro_sol))
+            c2.metric("微量元素阶段肥料数", len(micro_sol))
+            c3.metric("最终肥料总数", len(final_sol))
+
+            st.subheader("第一阶段：大量元素方案")
+            if macro_sol:
+                macro_df = pd.DataFrame(list(macro_sol.items()), columns=["肥料", "投料 kg"])
+                macro_df["投料 kg"] = macro_df["投料 kg"].round(4)
+                st.dataframe(macro_df, use_container_width=True, hide_index=True)
+            else:
+                st.info("大量元素阶段无投料结果。")
+
+            st.subheader("第二阶段：微量元素方案")
+            if micro_sol:
+                micro_df = pd.DataFrame(list(micro_sol.items()), columns=["肥料", "投料 kg"])
+                micro_df["投料 kg"] = micro_df["投料 kg"].round(4)
+                st.dataframe(micro_df, use_container_width=True, hide_index=True)
+            else:
+                if micro_status in ['Infeasible', 'Undefined', 'Unbounded']:
+                    st.warning("⚠️ 微量元素单独求解无解，已仅返回大量元素方案。")
+                else:
+                    st.info("本次微量元素无需额外补充。")
+
+            r, tn, m, e, sc, sa = safe_calc(final_sol, tank_vol, dosing_rate, water_for_calc, ec_calib)
             show_results(
-                r, tn, m, e, sc, sa, sol,
+                r, tn, m, e, sc, sa, final_sol,
                 base_water=base_water,
                 acid_additions=acid_additions,
                 acid_rows=acid_detail_rows,
@@ -661,20 +759,26 @@ with tab3:
                 except:
                     return ''
 
-            styled_df = comp_df.style.applymap(color_deviation, subset=['%偏差']).format({"%偏差": "{}"}).set_properties(**{'text-align': 'center'})
+            styled_df = comp_df.style.map(color_deviation, subset=['%偏差']).format({"%偏差": "{}"}).set_properties(**{'text-align': 'center'})
             st.dataframe(styled_df, use_container_width=True, hide_index=True)
 
-            st.subheader("🔒 微量元素结果（仅显示，不参与优化）")
-            micro_elements = ["Fe","Mn","Zn","Cu","B","Mo"]
-            micro_rows = []
-            for el in micro_elements:
-                micro_rows.append({
+            st.subheader("🔬 微量元素目标 vs 实际对比（第二阶段独立求解）")
+            micro_compare = []
+            for el, target in micro_targets.items():
+                actual_val = r.get(el, 0.0)
+                diff = actual_val - target
+                pct_error = (diff / target * 100) if target > 0 else 0.0
+                macro_bg = water_for_calc.get(el, 0.0) + macro_fert_ppm.get(el, 0.0)
+                micro_compare.append({
                     "元素": el,
-                    "实际 ppm": round(r.get(el, 0.0), 3)
+                    "目标 ppm": round(target, 3),
+                    "大量阶段背景": round(macro_bg, 3),
+                    "最终实际 ppm": round(actual_val, 3),
+                    "差值": round(diff, 3),
+                    "%偏差": f"{round(pct_error, 1)}%"
                 })
-            st.dataframe(pd.DataFrame(micro_rows), use_container_width=True, hide_index=True)
+            micro_df = pd.DataFrame(micro_compare)
+            styled_micro_df = micro_df.style.map(color_deviation, subset=['%偏差']).format({"%偏差": "{}"}).set_properties(**{'text-align': 'center'})
+            st.dataframe(styled_micro_df, use_container_width=True, hide_index=True)
 
-        else:
-            st.error("❌ 无解：大量元素目标与肥料库耦合导致不可同时满足。建议降低 SO4-S 目标或调整权重模式。")
-
-st.caption("百瑞 Blueberry Pro v1.3 | 微量元素锁死不参与优化")
+st.caption("百瑞 Blueberry Pro v1.4 | 大量元素与微量元素分阶段独立求解")
