@@ -36,85 +36,39 @@ if 'fert_lib' not in st.session_state:
         "ZnSO4 硫酸锌": [0,0,0,0,0,0,0,0.17,0,0.35,0,0,0,0],
         "Borax 硼砂": [0,0,0,0,0,0,0,0,0,0,0,0.11,0,0],
         "Mo  钼酸铵": [0,0,0,0,0,0,0,0,0,0,0,0,0.42,0],
-
-        # 铜来源
         "CuSO4·5H2O 硫酸铜": [0,0,0,0,0,0,0,0.128,0,0,0.255,0,0,0],
     }
     st.session_state.fert_lib = pd.DataFrame.from_dict(init_data, orient='index', columns=cols).fillna(0.0)
 
-# ==================== 核心函数（完全不动） ====================
+# ==================== 核心函数（保持主逻辑） ====================
 def safe_calc(inputs, vol, rate, water, ec_factor):
     lib = st.session_state.fert_lib.fillna(0.0).to_dict('index')
     all_cols = st.session_state.fert_lib.columns.tolist()
-    ppm = {col:0.0 for col in all_cols}
-    for name,kg in inputs.items():
+    ppm = {col: 0.0 for col in all_cols}
+    for name, kg in inputs.items():
         if name in lib and kg > 0:
             factor = (kg * 1000000 * rate) / vol
             for col in ppm.keys():
                 ppm[col] += factor * float(lib[name][col])
+
     res = {col: ppm[col] + water.get(col, 0.0) for col in all_cols if col != "Urea-N"}
     res["Urea-N"] = ppm["Urea-N"]
+
     meq = {
-        "NH4+": res["NH4-N"]/14.01, "K+": res["K"]/39.1, "Ca2+": res["Ca"]/20.04,
-        "Mg2+": res["Mg"]/12.15, "NO3-": res["NO3-N"]/14.01, "H2PO4-": res["P"]/30.97,
-        "SO4 2-": res["SO4-S"]/16.03, "HCO3-": water.get("HCO3", 0.0)/61.02
+        "NH4+": res["NH4-N"]/14.01,
+        "K+": res["K"]/39.1,
+        "Ca2+": res["Ca"]/20.04,
+        "Mg2+": res["Mg"]/12.15,
+        "NO3-": res["NO3-N"]/14.01,
+        "H2PO4-": res["P"]/30.97,
+        "SO4 2-": res["SO4-S"]/16.03,
+        "HCO3-": water.get("HCO3", 0.0)/61.02
     }
-    s_cat = sum([meq["NH4+"],meq["K+"],meq["Ca2+"],meq["Mg2+"]])
-    s_ani = sum([meq["NO3-"],meq["H2PO4-"],meq["SO4 2-"],meq["HCO3-"]])
+    s_cat = sum([meq["NH4+"], meq["K+"], meq["Ca2+"], meq["Mg2+"]])
+    s_ani = sum([meq["NO3-"], meq["H2PO4-"], meq["SO4 2-"], meq["HCO3-"]])
     total_n = res["NO3-N"] + res["NH4-N"] + res["Urea-N"]
-    est_ec = ((s_cat+s_ani)/20) * ec_factor + water["EC"]
-    return res,total_n,meq,est_ec,s_cat,s_ani
-
-def export_to_excel(solution_dict,res,meq,total_n,ec,sc,sa):
-    wb = Workbook()
-    ws1 = wb.active
-    ws1.title = "Fertilizer Plan"
-    ws1.append(["肥料名称","投料 kg"])
-    for k,v in solution_dict.items():
-        ws1.append([k,round(v,4)])
-    ws2 = wb.create_sheet("Element PPM")
-    ws2.append(["元素","ppm"])
-    for k,v in res.items():
-        ws2.append([k,round(v,3)])
-    ws3 = wb.create_sheet("Ion Balance")
-    ws3.append(["离子","meq/L"])
-    for k,v in meq.items():
-        ws3.append([k,round(v,3)])
-    ws3.append([])
-    ws3.append(["Σ 阳离子",round(sc,3)])
-    ws3.append(["Σ 阴离子",round(sa,3)])
-    return wb
-
-def show_results(res,tn,meq,ec,sc,sa,final_dict):
-    c1,c2,c3,c4,c5 = st.columns(5)
-    c1.metric("总氮",f"{round(tn,1)} ppm")
-    c2.metric("预测 EC",f"{round(ec,2)}")
-    c3.metric("Σ 阳",round(sc,2))
-    c4.metric("Σ 阴",round(sa,2))
-    c5.metric("电荷差",round(sc-sa,2))
-    st.divider()
-    l,r = st.columns([1,1.2])
-    with l:
-        df_res = pd.DataFrame(res.items(),columns=["元素","ppm"])
-        st.dataframe(df_res,use_container_width=True, hide_index=True)
-    with r:
-        fig = go.Figure(data=[
-            go.Bar(name='阳离子',x=['NH4+','K+','Ca2+','Mg2+'], y=[meq['NH4+'],meq['K+'],meq['Ca2+'],meq['Mg2+']]),
-            go.Bar(name='阴离子',x=['NO3-','H2PO4-','SO4 2-','HCO3-'], y=[meq['NO3-'],meq['H2PO4-'],meq['SO4 2-'],meq['HCO3-']])
-        ])
-        fig.update_layout(height=350,barmode='group')
-        st.plotly_chart(fig,use_container_width=True)
-
-    wb = export_to_excel(final_dict,res,meq,tn,ec,sc,sa)
-    buffer = BytesIO()
-    wb.save(buffer)
-    buffer.seek(0)
-    st.download_button(
-        "📥 下载完整Excel报告",
-        buffer,
-        file_name=f"Blueberry_Report_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
+    est_ec = ((s_cat + s_ani) / 20) * ec_factor + water["EC"]
+    return res, total_n, meq, est_ec, s_cat, s_ani
 
 # ==================== 调酸统一计算（支持多种酸 + 浓度可选） ====================
 def get_water_for_calc(w_data, dosing_rate, tank_vol):
@@ -124,7 +78,6 @@ def get_water_for_calc(w_data, dosing_rate, tank_vol):
     hco3_val = w_data.get("HCO3", 0.0)
     current_hco3_meq = hco3_val / 61.02
 
-    # 根据目标pH估算残余碱度
     if target_pH <= 5.0:
         target_residual_meq = 0.1
     elif target_pH <= 5.5:
@@ -134,7 +87,6 @@ def get_water_for_calc(w_data, dosing_rate, tank_vol):
     else:
         target_residual_meq = 1.0
 
-    # 酸参数：不同浓度对应不同密度
     acid_catalog = {
         "磷酸 (H3PO4)": {
             "mw": 98.0, "val": 1, "el": "P", "el_w": 30.97,
@@ -164,12 +116,13 @@ def get_water_for_calc(w_data, dosing_rate, tank_vol):
 
     acid_list = st.session_state.get("acid_list", [])
 
-    w_data_calc = dict(w_data)
+    base_water = dict(w_data)  # 原水本底，不含调酸带入
+    water_with_acid = dict(w_data)  # 原水+调酸后参与计算的水
     acid_detail_rows = []
 
     needed_meq_total = 0.0
     acid_L_per_bucket_total = 0.0
-    nutrient_additions = {"P": 0.0, "SO4-S": 0.0, "NO3-N": 0.0}
+    acid_additions = {"P": 0.0, "SO4-S": 0.0, "NO3-N": 0.0}
 
     if acid_mode == "调酸":
         needed_meq_total = max(0.0, current_hco3_meq - target_residual_meq)
@@ -189,15 +142,12 @@ def get_water_for_calc(w_data, dosing_rate, tank_vol):
                 density = opt["density"]
                 purity = opt["purity"]
 
-                # 该酸承担的中和量
                 acid_meq = needed_meq_total * share
-
-                # ml/m3 = meq/L × mw / (density × purity × val)
                 ml_per_m3 = (acid_meq * base["mw"]) / (density * purity * base["val"])
                 nutrient_ppm = (acid_meq / base["val"]) * base["el_w"]
                 acid_L_per_bucket = ml_per_m3 * tank_vol / (dosing_rate * 1_000_000)
 
-                nutrient_additions[base["el"]] += nutrient_ppm
+                acid_additions[base["el"]] += nutrient_ppm
                 acid_L_per_bucket_total += acid_L_per_bucket
 
                 acid_detail_rows.append({
@@ -210,19 +160,149 @@ def get_water_for_calc(w_data, dosing_rate, tank_vol):
                     f"{base['el']}增加(ppm)": round(nutrient_ppm, 2)
                 })
 
-        # 修正原水
-        w_data_calc["HCO3"] = target_residual_meq * 61.02
-        for el, add_val in nutrient_additions.items():
-            w_data_calc[el] = w_data_calc.get(el, 0.0) + add_val
+        water_with_acid["HCO3"] = target_residual_meq * 61.02
+        for el, add_val in acid_additions.items():
+            water_with_acid[el] = water_with_acid.get(el, 0.0) + add_val
 
     return (
-        w_data_calc,
+        water_with_acid,          # 用于最终计算
+        base_water,               # 原水本底
+        acid_additions,           # 酸带入元素
         current_hco3_meq,
         needed_meq_total,
-        nutrient_additions,
         target_residual_meq,
         acid_L_per_bucket_total,
         acid_detail_rows
+    )
+
+def build_ppm_breakdown(res, inputs, vol, rate, base_water, acid_additions):
+    lib = st.session_state.fert_lib.fillna(0.0).to_dict('index')
+    all_cols = st.session_state.fert_lib.columns.tolist()
+    fert_ppm = {col: 0.0 for col in all_cols}
+
+    for name, kg in inputs.items():
+        if name in lib and kg > 0:
+            factor = (kg * 1000000 * rate) / vol
+            for col in fert_ppm.keys():
+                fert_ppm[col] += factor * float(lib[name][col])
+
+    rows = []
+    for el in res.keys():
+        base_val = 0.0 if el == "Urea-N" else float(base_water.get(el, 0.0))
+        acid_val = 0.0 if el == "Urea-N" else float(acid_additions.get(el, 0.0))
+        fert_val = float(fert_ppm.get(el, 0.0))
+        total_val = float(res.get(el, 0.0))
+        rows.append({
+            "元素": el,
+            "原水本底": round(base_val, 3),
+            "酸带入": round(acid_val, 3),
+            "肥料贡献": round(fert_val, 3),
+            "总 ppm": round(total_val, 3)
+        })
+    return pd.DataFrame(rows)
+
+def export_to_excel(solution_dict, acid_rows, res_df, meq, total_n, ec, sc, sa):
+    wb = Workbook()
+
+    ws1 = wb.active
+    ws1.title = "Fertilizer Plan"
+    ws1.append(["类别", "名称", "投料量", "单位"])
+    for k, v in solution_dict.items():
+        ws1.append(["肥料", k, round(v, 4), "kg"])
+    if acid_rows:
+        for row in acid_rows:
+            ws1.append(["酸液", f"{row['酸种']} {row['浓度']}", round(row["单桶加酸(L)"], 4), "L"])
+
+    ws2 = wb.create_sheet("Element PPM")
+    ws2.append(["元素", "原水本底", "酸带入", "肥料贡献", "总 ppm"])
+    for _, row in res_df.iterrows():
+        ws2.append([
+            row["元素"],
+            round(row["原水本底"], 3),
+            round(row["酸带入"], 3),
+            round(row["肥料贡献"], 3),
+            round(row["总 ppm"], 3)
+        ])
+
+    ws3 = wb.create_sheet("Ion Balance")
+    ws3.append(["离子", "meq/L"])
+    for k, v in meq.items():
+        ws3.append([k, round(v, 3)])
+    ws3.append([])
+    ws3.append(["Σ 阳离子", round(sc, 3)])
+    ws3.append(["Σ 阴离子", round(sa, 3)])
+    ws3.append(["总氮", round(total_n, 3)])
+    ws3.append(["预测EC", round(ec, 3)])
+    return wb
+
+def show_results(res, tn, meq, ec, sc, sa, final_dict, base_water=None, acid_additions=None, acid_rows=None):
+    if base_water is None:
+        base_water = {}
+    if acid_additions is None:
+        acid_additions = {}
+    if acid_rows is None:
+        acid_rows = []
+
+    df_res = build_ppm_breakdown(
+        res=res,
+        inputs=final_dict,
+        vol=tank_vol,
+        rate=dosing_rate,
+        base_water=base_water,
+        acid_additions=acid_additions
+    )
+
+    c1, c2, c3, c4, c5 = st.columns(5)
+    c1.metric("总氮", f"{round(tn,1)} ppm")
+    c2.metric("预测 EC", f"{round(ec,2)}")
+    c3.metric("Σ 阳", round(sc,2))
+    c4.metric("Σ 阴", round(sa,2))
+    c5.metric("电荷差", round(sc-sa,2))
+
+    st.divider()
+    l, r = st.columns([1, 1.2])
+
+    with l:
+        st.subheader("元素 ppm 明细")
+        st.dataframe(df_res, use_container_width=True, hide_index=True)
+
+        st.subheader("投料方案")
+        plan_rows = [{"类别": "肥料", "名称": k, "投料量": round(v, 4), "单位": "kg"} for k, v in final_dict.items()]
+        if acid_rows:
+            for row in acid_rows:
+                plan_rows.append({
+                    "类别": "酸液",
+                    "名称": f"{row['酸种']} {row['浓度']}",
+                    "投料量": round(row["单桶加酸(L)"], 4),
+                    "单位": "L"
+                })
+        plan_df = pd.DataFrame(plan_rows)
+        st.dataframe(plan_df, use_container_width=True, hide_index=True)
+
+    with r:
+        fig = go.Figure(data=[
+            go.Bar(name='阳离子', x=['NH4+','K+','Ca2+','Mg2+'],
+                   y=[meq['NH4+'], meq['K+'], meq['Ca2+'], meq['Mg2+']]),
+            go.Bar(name='阴离子', x=['NO3-','H2PO4-','SO4 2-','HCO3-'],
+                   y=[meq['NO3-'], meq['H2PO4-'], meq['SO4 2-'], meq['HCO3-']])
+        ])
+        fig.update_layout(height=350, barmode='group')
+        st.plotly_chart(fig, use_container_width=True)
+
+        if acid_rows:
+            st.subheader("酸液明细")
+            st.dataframe(pd.DataFrame(acid_rows), use_container_width=True, hide_index=True)
+
+    wb = export_to_excel(final_dict, acid_rows, df_res, meq, tn, ec, sc, sa)
+    buffer = BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+
+    st.download_button(
+        "📥 下载完整Excel报告",
+        buffer,
+        file_name=f"Blueberry_Report_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
 # ==================== 侧边栏（系统参数 + 原水数据） ====================
@@ -257,7 +337,7 @@ with tab1:
         use_container_width=True
     )
 
-# Tab：调酸设置（独立页）
+# Tab：调酸设置
 with tab_acid:
     st.header("💧 调酸设置")
     acid_mode = st.selectbox("调酸模式", ["不调酸", "调酸"], index=0, key="acid_mode")
@@ -339,9 +419,10 @@ with tab_acid:
 
     (
         w_data_calc_preview,
+        base_water_preview,
+        acid_additions_preview,
         current_hco3_meq,
         needed_meq_total,
-        nutrient_additions,
         target_residual_meq,
         acid_L_total,
         acid_detail_rows
@@ -357,9 +438,9 @@ with tab_acid:
         c4.metric("目标残余碱度", f"{round(target_residual_meq, 2)} meq/L")
 
         add_cols = st.columns(3)
-        add_cols[0].metric("P 增加", f"{round(nutrient_additions.get('P', 0.0), 2)} ppm")
-        add_cols[1].metric("NO3-N 增加", f"{round(nutrient_additions.get('NO3-N', 0.0), 2)} ppm")
-        add_cols[2].metric("SO4-S 增加", f"{round(nutrient_additions.get('SO4-S', 0.0), 2)} ppm")
+        add_cols[0].metric("P 增加", f"{round(acid_additions_preview.get('P', 0.0), 2)} ppm")
+        add_cols[1].metric("NO3-N 增加", f"{round(acid_additions_preview.get('NO3-N', 0.0), 2)} ppm")
+        add_cols[2].metric("SO4-S 增加", f"{round(acid_additions_preview.get('SO4-S', 0.0), 2)} ppm")
 
         if acid_detail_rows:
             st.subheader("各酸贡献明细")
@@ -388,14 +469,29 @@ with tab2:
     st.info("💡 调酸参数已在【💧 调酸设置】页统一设置，点击下方按钮即可使用最新参数")
 
     if st.button("开始分析"):
-        w_data_calc, *_ = get_water_for_calc(w_data, dosing_rate, tank_vol)
-        r, tn, m, e, sc, sa = safe_calc(inputs, tank_vol, dosing_rate, w_data_calc, ec_calib)
-        show_results(r, tn, m, e, sc, sa, inputs)
+        (
+            water_for_calc,
+            base_water,
+            acid_additions,
+            _current_hco3_meq,
+            _needed_meq_total,
+            _target_residual_meq,
+            _acid_L_total,
+            acid_detail_rows
+        ) = get_water_for_calc(w_data, dosing_rate, tank_vol)
+
+        r, tn, m, e, sc, sa = safe_calc(inputs, tank_vol, dosing_rate, water_for_calc, ec_calib)
+        show_results(
+            r, tn, m, e, sc, sa, inputs,
+            base_water=base_water,
+            acid_additions=acid_additions,
+            acid_rows=acid_detail_rows
+        )
 
 # Tab3：结果回推
 with tab3:
     st.info("💡 提示：即使无法完全匹配，系统也会给出最接近目标的配肥方案。")
-    d1,d2,d3,d4 = st.columns(4)
+    d1, d2, d3, d4 = st.columns(4)
     tg = {
         "NO3-N": d1.number_input("目标 NO3-N",0.0,300.0,100.0),
         "NH4-N": d1.number_input("目标 NH4-N",0.0,300.0,50.0),
@@ -425,11 +521,20 @@ with tab3:
         cf = (1000000 * dosing_rate) / tank_vol
         lib = st.session_state.fert_lib.fillna(0.0).to_dict('index')
 
-        water_for_calc, *_ = get_water_for_calc(w_data, dosing_rate, tank_vol)
+        (
+            water_for_calc,
+            base_water,
+            acid_additions,
+            _current_hco3_meq,
+            _needed_meq_total,
+            _target_residual_meq,
+            _acid_L_total,
+            acid_detail_rows
+        ) = get_water_for_calc(w_data, dosing_rate, tank_vol)
 
         penalty = 0
         for el, target_val in tg.items():
-            actual = pulp.lpSum([v[n]*cf*float(lib[n][el]) for n in names])
+            actual = pulp.lpSum([v[n] * cf * float(lib[n][el]) for n in names])
             net_target = max(0, target_val - water_for_calc.get(el, 0))
             prob += actual - net_target <= slacks[el]
             prob += net_target - actual <= slacks[el]
@@ -453,8 +558,13 @@ with tab3:
             sol_df["投料 kg"] = sol_df["投料 kg"].round(4)
             st.dataframe(sol_df, use_container_width=True, hide_index=True)
 
-            r,tn,m,e,sc,sa = safe_calc(sol,tank_vol,dosing_rate,water_for_calc,ec_calib)
-            show_results(r,tn,m,e,sc,sa,sol)
+            r, tn, m, e, sc, sa = safe_calc(sol, tank_vol, dosing_rate, water_for_calc, ec_calib)
+            show_results(
+                r, tn, m, e, sc, sa, sol,
+                base_water=base_water,
+                acid_additions=acid_additions,
+                acid_rows=acid_detail_rows
+            )
 
             st.divider()
             st.subheader("📊 各元素目标 vs 实际对比（总浓度）")
