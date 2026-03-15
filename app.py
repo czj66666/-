@@ -939,8 +939,8 @@ with tab2:
 # Tab3：结果回推
 with tab3:
     st.markdown('<div class="soft-card">', unsafe_allow_html=True)
-    st.info("💡 固定权重：Mg 优先，SO4-S 适度放松；结果显示成本；<1kg 自动显示为克。")
-    st.caption("新增：K/Ca/Mg 饼图；比值=钾：钙、钾：镁、钙：磷、钙：镁。")
+    st.info("💡 固定权重：SO4-S 适度放松；结果显示成本；<1kg 自动显示为克。")
+    st.caption("")
 
     d1, d2, d3, d4 = st.columns(4)
     tg = {
