@@ -7,7 +7,7 @@ import datetime
 from openpyxl import Workbook
 
 # ==================== 页面配置 ====================
-st.set_page_config(page_title="Blueberry Pro v1.2", layout="wide")
+st.set_page_config(page_title="Blueberry Pro v1.3", layout="wide")
 
 st.markdown("""
 <style>
@@ -117,8 +117,8 @@ def get_water_for_calc(w_data, dosing_rate, tank_vol):
         }
     }
 
-    base_water = dict(w_data)            # 原水本底
-    water_with_acid = dict(w_data)       # 调酸后的计算用水
+    base_water = dict(w_data)
+    water_with_acid = dict(w_data)
     acid_list = st.session_state.get("acid_list", [])
     acid_detail_rows = []
 
@@ -165,9 +165,9 @@ def get_water_for_calc(w_data, dosing_rate, tank_vol):
             water_with_acid[el] = water_with_acid.get(el, 0.0) + add_val
 
     return (
-        water_with_acid,          # 用于最终计算
-        base_water,               # 原水本底
-        acid_additions,           # 酸带入元素
+        water_with_acid,
+        base_water,
+        acid_additions,
         current_hco3_meq,
         needed_meq_total,
         target_residual_meq,
@@ -204,7 +204,6 @@ def build_ppm_breakdown(res, inputs, vol, rate, base_water, acid_additions):
 def export_to_excel(solution_dict, acid_rows, res_df, meq, total_n, ec, sc, sa, raw_water=None):
     wb = Workbook()
 
-    # 1) 投料方案
     ws1 = wb.active
     ws1.title = "Fertilizer Plan"
     ws1.append(["类别", "名称", "投料量", "单位"])
@@ -214,7 +213,6 @@ def export_to_excel(solution_dict, acid_rows, res_df, meq, total_n, ec, sc, sa, 
         for row in acid_rows:
             ws1.append(["酸液", f"{row['酸种']} {row['浓度']}", round(row["单桶加酸(L)"], 4), "L"])
 
-    # 2) 元素表
     ws2 = wb.create_sheet("Element PPM")
     ws2.append(["元素", "原水本底", "酸带入", "肥料贡献", "总 ppm"])
     for _, row in res_df.iterrows():
@@ -226,7 +224,6 @@ def export_to_excel(solution_dict, acid_rows, res_df, meq, total_n, ec, sc, sa, 
             round(row["总 ppm"], 3)
         ])
 
-    # 3) 阴阳离子平衡
     ws3 = wb.create_sheet("Ion Balance")
     ws3.append(["离子", "meq/L"])
     for k, v in meq.items():
@@ -237,7 +234,6 @@ def export_to_excel(solution_dict, acid_rows, res_df, meq, total_n, ec, sc, sa, 
     ws3.append(["总氮", round(total_n, 3)])
     ws3.append(["预测EC", round(ec, 3)])
 
-    # 4) 原水参数
     ws4 = wb.create_sheet("Water Params")
     ws4.append(["参数", "数值"])
     if raw_water:
@@ -332,7 +328,7 @@ with st.sidebar:
     w_data["pH"] = st.number_input("原水 pH", min_value=0.0, max_value=14.0, value=7.0, step=0.1)
 
 # ==================== 主界面 Tabs ====================
-st.title("🧪 营养液计算系统 v1.2")
+st.title("🧪 营养液计算系统 v1.3")
 
 tab1, tab_acid, tab2, tab3 = st.tabs([
     "🏗️ 肥料库",
@@ -511,9 +507,10 @@ with tab2:
             raw_water=w_data
         )
 
-# Tab3：结果回推
+# Tab3：结果回推（微量元素锁死不参与优化）
 with tab3:
-    st.info("💡 提示：即使无法完全匹配，系统也会给出最接近目标的配肥方案。")
+    st.info("💡 结果回推当前模式：仅优化大量元素；微量元素锁死不参与优化，只显示最终计算结果。")
+
     d1, d2, d3, d4 = st.columns(4)
     tg = {
         "NO3-N": d1.number_input("目标 NO3-N", 0.0, 300.0, 100.0),
@@ -522,25 +519,78 @@ with tab3:
         "K": d2.number_input("目标 K", 0.0, 400.0, 180.0),
         "Ca": d3.number_input("目标 Ca", 0.0, 200.0, 80.0),
         "Mg": d3.number_input("目标 Mg", 0.0, 100.0, 30.0),
-        "SO4-S": d4.number_input("目标 SO4-S", 0.0, 200.0, 0.0),
-        "Fe": d4.number_input("目标 Fe", 0.000, 10.0, 0.0),
-        "Mn": d1.number_input("目标 Mn", 0.000, 7.0, 0.0),
-        "Zn": d2.number_input("目标 Zn", 0.000, 5.0, 0.0),
-        "Cu": d3.number_input("目标 Cu", 0.000, 3.0, 0.0),
-        "B": d4.number_input("目标 B", 0.000, 8.0, 0.0),
-        "Mo": d2.number_input("目标 Mo", 0.000, 3.0, 0.0),
+        "SO4-S": d4.number_input("目标 SO4-S", 0.0, 200.0, 40.0),
+        "Fe": d4.number_input("目标 Fe", 0.000, 10.0, 0.0, disabled=True),
+        "Mn": d1.number_input("目标 Mn", 0.000, 7.0, 0.0, disabled=True),
+        "Zn": d2.number_input("目标 Zn", 0.000, 5.0, 0.0, disabled=True),
+        "Cu": d3.number_input("目标 Cu", 0.000, 3.0, 0.0, disabled=True),
+        "B": d4.number_input("目标 B", 0.000, 8.0, 0.0, disabled=True),
+        "Mo": d2.number_input("目标 Mo", 0.000, 3.0, 0.0, disabled=True),
         "Urea-N": d1.number_input("目标 Urea-N", 0.00, 100.0, 0.0)
     }
 
-    MICROS = ["Fe","Mn","Zn","Cu","B","Mo"]
-    MICRO_FIXED_WEIGHT = 5000.0
-    SO4_RELAX_WEIGHT = 0.2
+    st.subheader("⚖️ 权重策略（仅大量元素）")
+    weight_mode = st.selectbox(
+        "选择权重模式",
+        ["标准模式", "均衡模式", "高硫模式"],
+        index=1
+    )
+    balance_factor = st.slider("均衡权重系数", 0.5, 3.0, 1.0, 0.1)
+
+    if weight_mode == "标准模式":
+        element_weights = {
+            "NO3-N": 100,
+            "NH4-N": 100,
+            "P": 100,
+            "K": 100,
+            "Ca": 100,
+            "Mg": 100,
+            "SO4-S": 10,
+            "Urea-N": 20
+        }
+    elif weight_mode == "均衡模式":
+        element_weights = {
+            "NO3-N": 100,
+            "NH4-N": 100,
+            "P": 100,
+            "K": 100,
+            "Ca": 100,
+            "Mg": 100,
+            "SO4-S": 80,
+            "Urea-N": 20
+        }
+    else:
+        element_weights = {
+            "NO3-N": 100,
+            "NH4-N": 100,
+            "P": 100,
+            "K": 100,
+            "Ca": 100,
+            "Mg": 100,
+            "SO4-S": 150,
+            "Urea-N": 20
+        }
+
+    element_weights = {k: v * balance_factor for k, v in element_weights.items()}
+
+    st.caption(f"当前权重：{weight_mode} | 均衡系数 = {balance_factor}")
+
+    macro_targets = {
+        "NO3-N": tg["NO3-N"],
+        "NH4-N": tg["NH4-N"],
+        "P": tg["P"],
+        "K": tg["K"],
+        "Ca": tg["Ca"],
+        "Mg": tg["Mg"],
+        "SO4-S": tg["SO4-S"],
+        "Urea-N": tg["Urea-N"]
+    }
 
     if st.button("🚀 求解最优投料"):
         prob = pulp.LpProblem("Opt", pulp.LpMinimize)
         names = st.session_state.fert_lib.index.tolist()
         v = {n: pulp.LpVariable(f"id_{i}", 0, 100) for i, n in enumerate(names)}
-        slacks = {el: pulp.LpVariable(f"s_{el}", 0) for el in tg.keys()}
+        slacks = {el: pulp.LpVariable(f"s_{el}", 0) for el in macro_targets.keys()}
         cf = (1000000 * dosing_rate) / tank_vol
         lib = st.session_state.fert_lib.fillna(0.0).to_dict('index')
 
@@ -556,19 +606,12 @@ with tab3:
         ) = get_water_for_calc(w_data, dosing_rate, tank_vol)
 
         penalty = 0
-        for el, target_val in tg.items():
+        for el, target_val in macro_targets.items():
             actual = pulp.lpSum([v[n] * cf * float(lib[n][el]) for n in names])
-            net_target = max(0, target_val - water_for_calc.get(el, 0))
+            net_target = max(0, target_val - water_for_calc.get(el, 0.0))
             prob += actual - net_target <= slacks[el]
             prob += net_target - actual <= slacks[el]
-
-            if el in MICROS:
-                penalty += slacks[el] * MICRO_FIXED_WEIGHT
-            elif el == "SO4-S":
-                penalty += slacks[el] * SO4_RELAX_WEIGHT
-            else:
-                w = 100 if el in ["NO3-N","NH4-N","P","K","Ca","Mg"] else 1
-                penalty += slacks[el] * w
+            penalty += slacks[el] * element_weights.get(el, 1)
 
         prob += pulp.lpSum([v[n] for n in names]) * 0.01 + penalty
         prob.solve(pulp.PULP_CBC_CMD(msg=False))
@@ -591,9 +634,9 @@ with tab3:
             )
 
             st.divider()
-            st.subheader("📊 各元素目标 vs 实际对比（总浓度）")
+            st.subheader("📊 大量元素目标 vs 实际对比（总浓度）")
             comparison_data = []
-            for el, target in tg.items():
+            for el, target in macro_targets.items():
                 actual_val = r.get(el, 0.0)
                 diff = actual_val - target
                 pct_error = (diff / target * 100) if target > 0 else 0.0
@@ -621,8 +664,17 @@ with tab3:
             styled_df = comp_df.style.applymap(color_deviation, subset=['%偏差']).format({"%偏差": "{}"}).set_properties(**{'text-align': 'center'})
             st.dataframe(styled_df, use_container_width=True, hide_index=True)
 
-            st.caption("✅ 微量元素固定强制命中；为避免硫酸根耦合导致微量被放弃，SO4-S 已做“放松惩罚”。")
-        else:
-            st.error("❌ 无解：目标/肥料库耦合导致不可同时满足。建议降低 SO4-S 目标或增加更多非硫酸盐的微量来源。")
+            st.subheader("🔒 微量元素结果（仅显示，不参与优化）")
+            micro_elements = ["Fe","Mn","Zn","Cu","B","Mo"]
+            micro_rows = []
+            for el in micro_elements:
+                micro_rows.append({
+                    "元素": el,
+                    "实际 ppm": round(r.get(el, 0.0), 3)
+                })
+            st.dataframe(pd.DataFrame(micro_rows), use_container_width=True, hide_index=True)
 
-st.caption("百瑞Blueberry Pro v1.0 | 2026")
+        else:
+            st.error("❌ 无解：大量元素目标与肥料库耦合导致不可同时满足。建议降低 SO4-S 目标或调整权重模式。")
+
+st.caption("百瑞 Blueberry Pro v1.3 | 微量元素锁死不参与优化")
