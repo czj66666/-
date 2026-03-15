@@ -744,8 +744,7 @@ st.markdown("""
 <div class="hero-box">
     <div class="hero-title">🧪 营养液计算系统 v1.9</div>
     <div class="hero-subtitle">
-        面向蓝莓营养液配方设计的专业计算工具。支持原水修正、调酸、多阶段配肥、成本核算、
-        1~5 吨投料表，以及 K / Ca / Mg 结构分析。
+        
     </div>
 </div>
 """, unsafe_allow_html=True)
