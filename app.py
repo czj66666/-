@@ -1104,4 +1104,4 @@ with tab3:
             styled_micro_df = micro_df.style.map(color_deviation, subset=['%偏差']).format({"%偏差": "{}"}).set_properties(**{'text-align': 'center'})
             st.dataframe(styled_micro_df, use_container_width=True, hide_index=True)
 
-st.caption("百瑞 Blueberry Pro v1.9 | 现代化排版 | 含价格、成本、克显示、1~5吨投料表、K/Ca/Mg饼图与比值")
+st.caption("百瑞果蔬 Blueberry  v1.1")
