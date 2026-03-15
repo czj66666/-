@@ -660,8 +660,8 @@ def solve_macro_targets(macro_targets, water_for_calc, lib, cf):
         "P": 100,
         "K": 100,
         "Ca": 100,
-        "Mg": 180,
-        "SO4-S": 20,
+        "Mg": 100,
+        "SO4-S": 55,
         "Urea-N": 20
     }
 
