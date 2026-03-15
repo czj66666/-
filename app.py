@@ -7,7 +7,7 @@ import datetime
 from openpyxl import Workbook
 
 # ==================== 页面配置 ====================
-st.set_page_config(page_title="Blueberry Pro v1.8", layout="wide")
+st.set_page_config(page_title="Blueberry Pro v1.9", layout="wide")
 
 st.markdown("""
 <style>
@@ -62,25 +62,38 @@ if 'fert_lib' not in st.session_state:
     }
     st.session_state.fert_lib = pd.DataFrame.from_dict(init_data, orient='index', columns=cols).fillna(0.0)
 
-# 统一名称，修复历史版本空格不一致
+# 统一名称 + 补齐历史版本缺失列
 st.session_state.fert_lib.index = (
     st.session_state.fert_lib.index
     .str.replace(r"\s+", " ", regex=True)
     .str.strip()
 )
 
+required_cols = ["NO3-N","NH4-N","P","K","Mg","Ca","Fe","SO4-S","Mn","Zn","Cu","B","Mo","Urea-N","价格(元/kg)"]
+for col in required_cols:
+    if col not in st.session_state.fert_lib.columns:
+        st.session_state.fert_lib[col] = 0.0
+st.session_state.fert_lib = st.session_state.fert_lib[required_cols].fillna(0.0)
+
 # ==================== 工具函数 ====================
-def format_weight(kg):
+def format_weight(kg: float) -> str:
     if kg < 1:
         return f"{round(kg * 1000, 1)} g"
     return f"{round(kg, 4)} kg"
+
+def safe_ratio_value(a: float, b: float):
+    if b == 0:
+        return "∞"
+    return round(a / b, 4)
 
 def calc_total_cost(solution_dict):
     lib = st.session_state.fert_lib.fillna(0.0)
     total_cost = 0.0
     rows = []
     for name, kg in solution_dict.items():
-        price = float(lib.loc[name, "价格(元/kg)"]) if name in lib.index and "价格(元/kg)" in lib.columns else 0.0
+        price = 0.0
+        if name in lib.index and "价格(元/kg)" in lib.columns:
+            price = float(lib.loc[name, "价格(元/kg)"])
         cost = kg * price
         total_cost += cost
         rows.append({
@@ -95,10 +108,9 @@ def calc_total_cost(solution_dict):
 def build_tonnage_table(solution_dict):
     rows = []
     for water_ton in [1, 2, 3, 4, 5]:
-        scale = water_ton
         row = {"水量": f"{water_ton} 吨"}
         for name, kg in solution_dict.items():
-            amount = kg * scale
+            amount = kg * water_ton
             row[name] = format_weight(amount)
         rows.append(row)
     return pd.DataFrame(rows)
@@ -118,7 +130,7 @@ def calc_fertilizer_only(inputs, vol, rate):
 
 def safe_calc(inputs, vol, rate, water, ec_factor):
     ppm = calc_fertilizer_only(inputs, vol, rate)
-    all_cols = [c for c in st.session_state.fert_lib.columns.tolist() if c not in ["价格(元/kg)"]]
+    all_cols = [c for c in st.session_state.fert_lib.columns.tolist() if c != "价格(元/kg)"]
 
     res = {col: ppm[col] + water.get(col, 0.0) for col in all_cols if col != "Urea-N"}
     res["Urea-N"] = ppm["Urea-N"]
@@ -306,10 +318,27 @@ def export_to_excel(solution_dict, acid_rows, res_df, meq, total_n, ec, sc, sa, 
             ws4.append([k, v])
 
     ws5 = wb.create_sheet("1to5Ton Dose")
-    headers = tonnage_df.columns.tolist()
-    ws5.append(headers)
+    ws5.append(tonnage_df.columns.tolist())
     for _, row in tonnage_df.iterrows():
         ws5.append(row.tolist())
+
+    # 比值表
+    ws6 = wb.create_sheet("Element Ratios")
+    ws6.append(["项目", "数值"])
+
+    def get_total_ppm(el):
+        vals = res_df.loc[res_df["元素"] == el, "总 ppm"].values
+        return float(vals[0]) if len(vals) else 0.0
+
+    k_val = get_total_ppm("K")
+    ca_val = get_total_ppm("Ca")
+    mg_val = get_total_ppm("Mg")
+    p_val = get_total_ppm("P")
+
+    ws6.append(["钾：钙", f"{safe_ratio_value(k_val, ca_val)} : 1"])
+    ws6.append(["钾：镁", f"{safe_ratio_value(k_val, mg_val)} : 1"])
+    ws6.append(["钙：磷", f"{safe_ratio_value(ca_val, p_val)} : 1"])
+    ws6.append(["钙：镁", f"{safe_ratio_value(ca_val, mg_val)} : 1"])
 
     return wb
 
@@ -333,6 +362,11 @@ def show_results(res, tn, meq, ec, sc, sa, final_dict, base_water=None, acid_add
     total_cost, cost_df = calc_total_cost(final_dict)
     tonnage_df = build_tonnage_table(final_dict)
 
+    k_val = float(res.get("K", 0.0))
+    ca_val = float(res.get("Ca", 0.0))
+    mg_val = float(res.get("Mg", 0.0))
+    p_val = float(res.get("P", 0.0))
+
     c1, c2, c3, c4, c5, c6 = st.columns(6)
     c1.metric("总氮", f"{round(tn,1)} ppm")
     c2.metric("预测 EC", f"{round(ec,2)}")
@@ -340,6 +374,12 @@ def show_results(res, tn, meq, ec, sc, sa, final_dict, base_water=None, acid_add
     c4.metric("Σ 阴", round(sa,2))
     c5.metric("电荷差", round(sc-sa,2))
     c6.metric("总成本", f"{round(total_cost,2)} 元")
+
+    r1, r2, r3, r4 = st.columns(4)
+    r1.metric("钾：钙", f"{safe_ratio_value(k_val, ca_val)} : 1")
+    r2.metric("钾：镁", f"{safe_ratio_value(k_val, mg_val)} : 1")
+    r3.metric("钙：磷", f"{safe_ratio_value(ca_val, p_val)} : 1")
+    r4.metric("钙：镁", f"{safe_ratio_value(ca_val, mg_val)} : 1")
 
     st.divider()
     l, r = st.columns([1, 1.2])
@@ -351,7 +391,9 @@ def show_results(res, tn, meq, ec, sc, sa, final_dict, base_water=None, acid_add
         st.subheader("投料方案")
         plan_rows = []
         for name, kg in final_dict.items():
-            price = float(st.session_state.fert_lib.loc[name, "价格(元/kg)"]) if name in st.session_state.fert_lib.index else 0.0
+            price = 0.0
+            if name in st.session_state.fert_lib.index and "价格(元/kg)" in st.session_state.fert_lib.columns:
+                price = float(st.session_state.fert_lib.loc[name, "价格(元/kg)"])
             plan_rows.append({
                 "类别": "肥料",
                 "名称": name,
@@ -385,6 +427,19 @@ def show_results(res, tn, meq, ec, sc, sa, final_dict, base_water=None, acid_add
         ])
         fig.update_layout(height=350, barmode='group')
         st.plotly_chart(fig, use_container_width=True)
+
+        st.subheader("K / Ca / Mg 结构分析")
+        fig_pie = go.Figure(data=[go.Pie(labels=["K", "Ca", "Mg"], values=[k_val, ca_val, mg_val], hole=0.25)])
+        fig_pie.update_layout(height=360)
+        st.plotly_chart(fig_pie, use_container_width=True)
+
+        ratio_rows = pd.DataFrame([
+            {"比值": "钾：钙", "结果": f"{safe_ratio_value(k_val, ca_val)} : 1"},
+            {"比值": "钾：镁", "结果": f"{safe_ratio_value(k_val, mg_val)} : 1"},
+            {"比值": "钙：磷", "结果": f"{safe_ratio_value(ca_val, p_val)} : 1"},
+            {"比值": "钙：镁", "结果": f"{safe_ratio_value(ca_val, mg_val)} : 1"},
+        ])
+        st.dataframe(ratio_rows, use_container_width=True, hide_index=True)
 
         st.subheader("成本明细")
         show_cost_df = cost_df[["肥料", "投料", "单价(元/kg)", "成本(元)"]].copy()
@@ -493,7 +548,7 @@ with st.sidebar:
     w_data["pH"] = st.number_input("原水 pH", min_value=0.0, max_value=14.0, value=7.0, step=0.1)
 
 # ==================== 主界面 Tabs ====================
-st.title("🧪 营养液计算系统 v1.8")
+st.title("🧪 营养液计算系统 v1.9")
 
 tab1, tab_acid, tab2, tab3 = st.tabs([
     "🏗️ 肥料库",
@@ -638,8 +693,6 @@ with tab_acid:
             st.dataframe(pd.DataFrame(acid_detail_rows), use_container_width=True, hide_index=True)
         else:
             st.warning("⚠️ 已开启调酸，但没有有效酸液比例，请设置至少一种酸的比例大于 0。")
-    else:
-        st.success("✅ 不调酸，无需添加酸液")
 
 # Tab2：配方回测
 with tab2:
@@ -674,6 +727,7 @@ with tab2:
 # Tab3：结果回推
 with tab3:
     st.info("💡 固定权重：Mg 优先，SO4-S 适度放松；结果显示成本；<1kg 自动显示为克。")
+    st.caption("新增：K/Ca/Mg 饼图；比值=钾：钙、钾：镁、钙：磷、钙：镁。")
 
     d1, d2, d3, d4 = st.columns(4)
     tg = {
@@ -833,4 +887,4 @@ with tab3:
             styled_micro_df = micro_df.style.map(color_deviation, subset=['%偏差']).format({"%偏差": "{}"}).set_properties(**{'text-align': 'center'})
             st.dataframe(styled_micro_df, use_container_width=True, hide_index=True)
 
-st.caption("百瑞 Blueberry Pro v1.8 | 含价格、成本、克显示、1~5吨投料表")
+st.caption("百瑞 Blueberry Pro v1.9 | 含价格、成本、克显示、1~5吨投料表、K/Ca/Mg饼图与比值")
