@@ -299,10 +299,9 @@ def calc_total_cost(solution_dict):
 def build_tonnage_table(solution_dict):
     rows = []
     for water_ton in [1, 2, 3, 4, 5]:
-        row = {"水量": f"{water_ton} 吨"}
+        row = {"吨数": f"{water_ton} 吨"}
         for name, kg in solution_dict.items():
-            amount = kg * water_ton
-            row[name] = format_weight(amount)
+            row[name] = format_weight(kg * water_ton)
         rows.append(row)
     return pd.DataFrame(rows)
 
@@ -607,7 +606,7 @@ def show_results(res, tn, meq, ec, sc, sa, final_dict, base_water=None, acid_add
         st.dataframe(plan_df, use_container_width=True, hide_index=True)
 
         st.subheader("1 吨到 5 吨水投料表")
-        st.caption("便于现场按不同配水量直接取数。")
+        st.caption("行是吨数，列是肥料名称，便于现场直接查用量。")
         st.dataframe(tonnage_df, use_container_width=True, hide_index=True)
 
     with r:
