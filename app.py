@@ -7,41 +7,200 @@ import datetime
 from openpyxl import Workbook
 
 # ==================== 页面配置 ====================
-st.set_page_config(page_title="Blueberry Pro v2.0", layout="wide")
+st.set_page_config(page_title="Blueberry Pro v1.9", layout="wide")
 
 st.markdown("""
 <style>
+:root {
+    --bg: #f6f8fb;
+    --card: #ffffff;
+    --text: #0f172a;
+    --muted: #64748b;
+    --line: #e2e8f0;
+    --primary: #2563eb;
+    --primary-soft: #dbeafe;
+    --shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+    --radius: 18px;
+}
+
+html, body, [data-testid="stAppViewContainer"] {
+    background: var(--bg);
+    color: var(--text);
+}
+
 .block-container {
-    max-width: 1250px;
-    padding-top: 1rem;
+    padding-top: 1.2rem;
     padding-bottom: 2rem;
+    max-width: 1500px;
 }
+
 h1, h2, h3 {
-    margin-bottom: 0.3rem !important;
+    color: var(--text) !important;
+    letter-spacing: -0.02em;
 }
-div[data-baseweb="input"] > div,
-div[data-baseweb="select"] > div {
-    border-radius: 10px !important;
+
+h1 {
+    font-size: 2rem !important;
+    font-weight: 800 !important;
+    margin-bottom: 0.2rem !important;
 }
-.stButton > button,
-.stDownloadButton > button {
-    border-radius: 10px !important;
+
+h2 {
+    font-size: 1.25rem !important;
+    font-weight: 700 !important;
+    margin-top: 0.2rem !important;
+}
+
+h3 {
+    font-size: 1.02rem !important;
     font-weight: 700 !important;
 }
+
+p, label, div {
+    color: var(--text);
+}
+
+small, .stCaption, [data-testid="stCaptionContainer"] {
+    color: var(--muted) !important;
+}
+
+/* 顶部标题 */
+.hero-box {
+    background: linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
+    border: 1px solid var(--line);
+    border-radius: 24px;
+    padding: 22px 24px 18px 24px;
+    box-shadow: var(--shadow);
+    margin-bottom: 1rem;
+}
+
+.hero-title {
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--text);
+    margin-bottom: 0.3rem;
+    letter-spacing: -0.03em;
+}
+
+.hero-subtitle {
+    color: var(--muted);
+    font-size: 0.98rem;
+    line-height: 1.6;
+}
+
+/* 侧边栏 */
+[data-testid="stSidebar"] {
+    background: #f8fafc;
+    border-right: 1px solid var(--line);
+}
+
+[data-testid="stSidebar"] .block-container {
+    padding-top: 1rem;
+}
+
+/* Tabs */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 10px;
+    background: transparent;
+    padding: 2px 0 10px 0;
+}
+
+.stTabs [data-baseweb="tab"] {
+    background: #eef2f7;
+    border-radius: 999px;
+    padding: 10px 18px;
+    height: auto;
+    border: 1px solid transparent;
+    color: var(--muted);
+    font-weight: 600;
+}
+
+.stTabs [aria-selected="true"] {
+    background: var(--card) !important;
+    color: var(--primary) !important;
+    border: 1px solid var(--line) !important;
+    box-shadow: var(--shadow);
+}
+
+/* Metric */
 [data-testid="stMetric"] {
-    border: 1px solid #e5e7eb;
-    border-radius: 14px;
-    padding: 12px;
-}
-[data-testid="stDataFrame"] {
-    border-radius: 12px;
-}
-.simple-box {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
     padding: 14px 16px;
-    border: 1px solid #e5e7eb;
-    border-radius: 14px;
-    background: #ffffff;
-    margin-bottom: 14px;
+    box-shadow: var(--shadow);
+}
+
+[data-testid="stMetricLabel"] {
+    color: var(--muted) !important;
+    font-weight: 600 !important;
+}
+
+[data-testid="stMetricValue"] {
+    color: var(--text) !important;
+    font-weight: 800 !important;
+}
+
+/* dataframe / table */
+[data-testid="stDataFrame"] {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 6px;
+    box-shadow: var(--shadow);
+}
+
+/* 输入框 */
+div[data-baseweb="input"],
+div[data-baseweb="select"] > div {
+    border-radius: 14px !important;
+}
+
+div[data-baseweb="input"] > div,
+div[data-baseweb="select"] > div {
+    border: 1px solid var(--line) !important;
+    box-shadow: none !important;
+    background: #fff !important;
+}
+
+div[data-baseweb="input"] > div:focus-within,
+div[data-baseweb="select"] > div:focus-within {
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.10) !important;
+}
+
+/* 按钮 */
+.stButton > button,
+.stDownloadButton > button {
+    border-radius: 999px !important;
+    border: 1px solid transparent !important;
+    background: var(--primary) !important;
+    color: white !important;
+    font-weight: 700 !important;
+    padding: 0.6rem 1.1rem !important;
+    box-shadow: var(--shadow);
+}
+
+.stButton > button:hover,
+.stDownloadButton > button:hover {
+    background: #1d4ed8 !important;
+}
+
+/* Alert */
+[data-testid="stAlert"] {
+    border-radius: 16px !important;
+    border: 1px solid var(--line) !important;
+    box-shadow: var(--shadow);
+}
+
+/* 卡片容器 */
+.soft-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    padding: 16px 18px;
+    box-shadow: var(--shadow);
+    margin-bottom: 12px;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -64,7 +223,7 @@ MICRO_FERTILIZERS = [
     "MnSO4 硫酸锰",
     "ZnSO4 硫酸锌",
     "CuSO4·5H2O 硫酸铜",
-    "Borax 速溶硼",
+    "Borax 硼砂",
     "Mo 钼酸铵"
 ]
 
@@ -72,7 +231,7 @@ MICRO_FERTILIZERS = [
 if 'fert_lib' not in st.session_state:
     cols = ["NO3-N","NH4-N","P","K","Mg","Ca","Fe","SO4-S","Mn","Zn","Cu","B","Mo","Urea-N","价格(元/kg)"]
     init_data = {
-        "Urea 尿素": [0,0,0,0,0,0,0,0,0,0,0,0,0,0.46,5.0],
+        "Urea 尿素": [0,0,0,0,0,0,0,0,0,0,0,0,0,0.46,5],  
 
         "MAP 磷酸一铵": [0,0.12,0.2662,0,0,0,0,0,0,0,0,0,0,0,8.65],
         "MKP 磷酸二氢钾": [0,0,0.2269,0.2822,0,0,0,0,0,0,0,0,0,0,12.00],
@@ -84,16 +243,16 @@ if 'fert_lib' not in st.session_state:
         "Ca(NO3)2 硝酸钙": [0.11,0,0,0,0,0.16,0,0,0,0,0,0,0,0,2.50],
         "AmSulphate 硫酸铵": [0,0.205,0,0,0,0,0,0.24,0,0,0,0,0,0,2.45],
 
-        "Iron 螯合铁": [0,0,0,0,0,0,0.13,0,0,0,0,0,0,0,39.00],
+        "Iron 螯合铁": [0,0,0,0,0,0,0.13,0,0,0,0,0,0,0,39.00],   # EDTA-Fe 13
         "MnSO4 硫酸锰": [0,0,0,0,0,0,0,0.18,0.31,0,0,0,0,0,8.00],
         "ZnSO4 硫酸锌": [0,0,0,0,0,0,0,0.11,0,0.205,0,0,0,0,6.60],
-        "Borax 速溶硼": [0,0,0,0,0,0,0,0,0,0,0,0.205,0,0,18.00],
+        "Borax 速溶硼": [0,0,0,0,0,0,0,0,0,0,0,0.205,0,0,18.00],   # 
         "Mo 钼酸铵": [0,0.0676,0,0,0,0,0,0,0,0,0,0,0.54,0,440.00],
         "CuSO4·5H2O 硫酸铜": [0,0,0,0,0,0,0,0.12,0,0,0.24,0,0,0,25.00],
     }
     st.session_state.fert_lib = pd.DataFrame.from_dict(init_data, orient='index', columns=cols).fillna(0.0)
 
-# 统一名称 + 补齐缺失列
+# 统一名称 + 补齐历史版本缺失列
 st.session_state.fert_lib.index = (
     st.session_state.fert_lib.index
     .astype(str)
@@ -397,71 +556,60 @@ def show_results(res, tn, meq, ec, sc, sa, final_dict, base_water=None, acid_add
     mg_val = float(res.get("Mg", 0.0))
     p_val = float(res.get("P", 0.0))
 
-    st.subheader("结果总览")
-    c1, c2, c3, c4 = st.columns(4)
+    c1, c2, c3, c4, c5, c6 = st.columns(6)
     c1.metric("总氮", f"{round(tn,1)} ppm")
-    c2.metric("预测EC", f"{round(ec,2)}")
-    c3.metric("电荷差", round(sc - sa, 2))
-    c4.metric("总成本", f"{round(total_cost,2)} 元")
+    c2.metric("预测 EC", f"{round(ec,2)}")
+    c3.metric("Σ 阳", round(sc,2))
+    c4.metric("Σ 阴", round(sa,2))
+    c5.metric("电荷差", round(sc-sa,2))
+    c6.metric("总成本", f"{round(total_cost,2)} 元")
 
-    c5, c6, c7, c8 = st.columns(4)
-    c5.metric("钾：钙", f"{safe_ratio_value(k_val, ca_val)} : 1")
-    c6.metric("钾：镁", f"{safe_ratio_value(k_val, mg_val)} : 1")
-    c7.metric("钙：磷", f"{safe_ratio_value(ca_val, p_val)} : 1")
-    c8.metric("钙：镁", f"{safe_ratio_value(ca_val, mg_val)} : 1")
+    r1, r2, r3, r4 = st.columns(4)
+    r1.metric("钾：钙", f"{safe_ratio_value(k_val, ca_val)} : 1")
+    r2.metric("钾：镁", f"{safe_ratio_value(k_val, mg_val)} : 1")
+    r3.metric("钙：磷", f"{safe_ratio_value(ca_val, p_val)} : 1")
+    r4.metric("钙：镁", f"{safe_ratio_value(ca_val, mg_val)} : 1")
 
-    st.markdown('<div class="simple-box">', unsafe_allow_html=True)
-    st.subheader("投料方案")
-    plan_rows = []
-    for name, kg in final_dict.items():
-        price = 0.0
-        if name in st.session_state.fert_lib.index and "价格(元/kg)" in st.session_state.fert_lib.columns:
-            price = float(st.session_state.fert_lib.loc[name, "价格(元/kg)"])
-        plan_rows.append({
-            "类别": "肥料",
-            "名称": name,
-            "投料量": format_weight(kg),
-            "单价(元/kg)": round(price, 4),
-            "成本(元)": round(kg * price, 4)
-        })
+    st.divider()
+    l, r = st.columns([1, 1.2])
 
-    if acid_rows:
-        for row in acid_rows:
+    with l:
+        st.subheader("元素 ppm 明细")
+        st.caption("显示原水本底、酸带入、肥料贡献与最终总浓度。")
+        st.dataframe(df_res, use_container_width=True, hide_index=True)
+
+        st.subheader("投料方案")
+        plan_rows = []
+        for name, kg in final_dict.items():
+            price = 0.0
+            if name in st.session_state.fert_lib.index and "价格(元/kg)" in st.session_state.fert_lib.columns:
+                price = float(st.session_state.fert_lib.loc[name, "价格(元/kg)"])
             plan_rows.append({
-                "类别": "酸液",
-                "名称": f"{row['酸种']} {row['浓度']}",
-                "投料量": f"{round(row['单桶加酸(L)'], 4)} L",
-                "单价(元/kg)": "",
-                "成本(元)": ""
+                "类别": "肥料",
+                "名称": name,
+                "投料量": format_weight(kg),
+                "单价(元/kg)": round(price, 4),
+                "成本(元)": round(kg * price, 4)
             })
 
-    plan_df = pd.DataFrame(plan_rows)
-    st.dataframe(plan_df, use_container_width=True, hide_index=True)
-    st.markdown('</div>', unsafe_allow_html=True)
+        if acid_rows:
+            for row in acid_rows:
+                plan_rows.append({
+                    "类别": "酸液",
+                    "名称": f"{row['酸种']} {row['浓度']}",
+                    "投料量": f"{round(row['单桶加酸(L)'], 4)} L",
+                    "单价(元/kg)": "",
+                    "成本(元)": ""
+                })
 
-    st.markdown('<div class="simple-box">', unsafe_allow_html=True)
-    st.subheader("1 吨到 5 吨水投料表")
-    st.dataframe(tonnage_df, use_container_width=True, hide_index=True)
-    st.markdown('</div>', unsafe_allow_html=True)
+        plan_df = pd.DataFrame(plan_rows)
+        st.dataframe(plan_df, use_container_width=True, hide_index=True)
 
-    st.markdown('<div class="simple-box">', unsafe_allow_html=True)
-    st.subheader("元素 ppm 明细")
-    st.dataframe(df_res, use_container_width=True, hide_index=True)
-    st.markdown('</div>', unsafe_allow_html=True)
+        st.subheader("1 吨到 5 吨水投料表")
+        st.caption("行是吨数，列是肥料名称，便于现场直接查用量。")
+        st.dataframe(tonnage_df, use_container_width=True, hide_index=True)
 
-    with st.expander("查看离子平衡与图表", expanded=False):
-        ion_df = pd.DataFrame([
-            {"离子": "NH4+", "meq/L": round(meq["NH4+"], 4)},
-            {"离子": "K+", "meq/L": round(meq["K+"], 4)},
-            {"离子": "Ca2+", "meq/L": round(meq["Ca2+"], 4)},
-            {"离子": "Mg2+", "meq/L": round(meq["Mg2+"], 4)},
-            {"离子": "NO3-", "meq/L": round(meq["NO3-"], 4)},
-            {"离子": "H2PO4-", "meq/L": round(meq["H2PO4-"], 4)},
-            {"离子": "SO4 2-", "meq/L": round(meq["SO4 2-"], 4)},
-            {"离子": "HCO3-", "meq/L": round(meq["HCO3-"], 4)},
-        ])
-        st.dataframe(ion_df, use_container_width=True, hide_index=True)
-
+    with r:
         fig = go.Figure(data=[
             go.Bar(name='阳离子', x=['NH4+','K+','Ca2+','Mg2+'],
                    y=[meq['NH4+'], meq['K+'], meq['Ca2+'], meq['Mg2+']]),
@@ -471,9 +619,27 @@ def show_results(res, tn, meq, ec, sc, sa, final_dict, base_water=None, acid_add
         fig.update_layout(height=350, barmode='group')
         st.plotly_chart(fig, use_container_width=True)
 
+        st.subheader("K / Ca / Mg 结构分析")
         fig_pie = go.Figure(data=[go.Pie(labels=["K", "Ca", "Mg"], values=[k_val, ca_val, mg_val], hole=0.25)])
         fig_pie.update_layout(height=360)
         st.plotly_chart(fig_pie, use_container_width=True)
+
+        ratio_rows = pd.DataFrame([
+            {"比值": "钾：钙", "结果": f"{safe_ratio_value(k_val, ca_val)} : 1"},
+            {"比值": "钾：镁", "结果": f"{safe_ratio_value(k_val, mg_val)} : 1"},
+            {"比值": "钙：磷", "结果": f"{safe_ratio_value(ca_val, p_val)} : 1"},
+            {"比值": "钙：镁", "结果": f"{safe_ratio_value(ca_val, mg_val)} : 1"},
+        ])
+        st.dataframe(ratio_rows, use_container_width=True, hide_index=True)
+
+        st.subheader("成本明细")
+        st.caption("按肥料单价自动汇总每种肥料成本与总成本。")
+        show_cost_df = cost_df[["肥料", "投料", "单价(元/kg)", "成本(元)"]].copy()
+        st.dataframe(show_cost_df, use_container_width=True, hide_index=True)
+
+        if acid_rows:
+            st.subheader("酸液明细")
+            st.dataframe(pd.DataFrame(acid_rows), use_container_width=True, hide_index=True)
 
     wb = export_to_excel(final_dict, acid_rows, df_res, meq, tn, ec, sc, sa, raw_water=raw_water)
     buffer = BytesIO()
@@ -484,8 +650,7 @@ def show_results(res, tn, meq, ec, sc, sa, final_dict, base_water=None, acid_add
         "📥 下载完整Excel报告",
         buffer,
         file_name=f"Blueberry_Report_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        use_container_width=True
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
 # ==================== 优化函数：大量元素（只允许大量肥，固定权重） ====================
@@ -559,62 +724,89 @@ def solve_micro_targets(micro_targets, lib, cf):
     micro_sol = {n: pulp.value(v_micro[n]) for n in micro_names if pulp.value(v_micro[n]) and pulp.value(v_micro[n]) > 0.001}
     return status, micro_sol, micro_names
 
-# ==================== 主界面 ====================
-st.title("🧪 营养液计算系统")
-st.caption("单页面简洁版：参数、原水、调酸、肥料库、配方回测、结果回推全部集中展示。")
-
-# ==================== 基础参数 ====================
-st.markdown('<div class="simple-box">', unsafe_allow_html=True)
-st.subheader("① 基础参数")
-c1, c2, c3 = st.columns(3)
-with c1:
+# ==================== 侧边栏 ====================
+with st.sidebar:
+    st.markdown("### ⚙️ 系统参数")
+    st.caption("设置母液桶体积、吸肥比例与 EC 修正系数。")
     tank_vol = st.number_input("母液桶体积(L)", min_value=1.0, value=1000.0, step=100.0)
-with c2:
     dosing_rate = st.number_input("吸肥比例(%)", min_value=0.01, value=0.53, step=0.01) / 100
-with c3:
     ec_calib = st.slider("EC 修正系数", 0.8, 1.4, 1.08, 0.01)
-st.markdown('</div>', unsafe_allow_html=True)
 
-# ==================== 原水数据 ====================
-st.markdown('<div class="simple-box">', unsafe_allow_html=True)
-st.subheader("② 原水数据")
-w_elements = ["NO3-N","NH4-N","P","K","Ca","Mg","SO4-S","Fe","Mn","Zn","Cu","B","Mo"]
-w_cols = st.columns(4)
-w_data = {}
-for i, el in enumerate(w_elements):
-    with w_cols[i % 4]:
-        w_data[el] = st.number_input(el, min_value=0.0, value=0.0, step=0.1, key=f"w_{el}")
+    st.divider()
 
-c1, c2, c3 = st.columns(3)
-with c1:
+    st.markdown("### 💧 原水数据")
+    st.caption("输入原水基础元素、碱度、EC 与 pH。")
+    w_elements = ["NO3-N","NH4-N","P","K","Ca","Mg","SO4-S","Fe","Mn","Zn","Cu","B","Mo"]
+    w_data = {el: st.number_input(el, min_value=0.0, value=0.0, step=0.1, key=f"w_{el}") for el in w_elements}
     w_data["HCO3"] = st.number_input("HCO3 (碳酸氢根) ppm", min_value=0.0, value=0.0, step=1.0)
-with c2:
     w_data["EC"] = st.number_input("原水 EC", min_value=0.0, value=0.05, step=0.01)
-with c3:
     w_data["pH"] = st.number_input("原水 pH", min_value=0.0, max_value=14.0, value=7.0, step=0.1)
-st.markdown('</div>', unsafe_allow_html=True)
 
-# ==================== 调酸设置 ====================
-st.markdown('<div class="simple-box">', unsafe_allow_html=True)
-st.subheader("③ 调酸设置")
+# ==================== 主界面 ====================
+st.markdown("""
+<div class="hero-box">
+    <div class="hero-title">🧪 营养液计算系统 v1.1</div>
+    <div class="hero-subtitle">
+        基于肥料库、原水数据、调酸设置、成本与离子平衡进行回测与结果回推。
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
-acid_mode = st.selectbox("调酸模式", ["不调酸", "调酸"], index=0, key="acid_mode")
-target_pH = st.slider("目标 pH", 4.0, 7.0, 5.5, 0.1, key="target_pH")
+tab1, tab_acid, tab2, tab3 = st.tabs([
+    "🏗️ 肥料库",
+    "💧 调酸设置",
+    "🔎 配方回测",
+    "🚀 结果回推"
+])
 
-acid_options_map = {
-    "磷酸 (H3PO4)": ["75%", "80%", "85%"],
-    "硫酸 (H2SO4)": ["50%", "98%"],
-    "硝酸 (HNO3)": ["30%", "40%", "55%", "68%"]
-}
+# Tab1：肥料库
+with tab1:
+    st.markdown('<div class="soft-card">', unsafe_allow_html=True)
+    st.subheader("肥料库")
+    st.caption("可直接编辑元素含量与价格，作为后续回测、优化与成本计算基础。")
+    st.session_state.fert_lib = st.data_editor(
+        st.session_state.fert_lib,
+        num_rows="dynamic",
+        use_container_width=True
+    )
+    st.markdown('</div>', unsafe_allow_html=True)
 
-if "acid_list" not in st.session_state:
-    st.session_state.acid_list = [
-        {"acid_type": "磷酸 (H3PO4)", "conc_label": "85%", "share": 100.0, "enabled": True}
-    ]
+    c1, c2 = st.columns(2)
+    with c1:
+        st.markdown('<div class="soft-card">', unsafe_allow_html=True)
+        st.subheader("大量肥名单")
+        st.caption("第一阶段优化时允许参与求解。")
+        st.write(MACRO_FERTILIZERS)
+        st.markdown('</div>', unsafe_allow_html=True)
+    with c2:
+        st.markdown('<div class="soft-card">', unsafe_allow_html=True)
+        st.subheader("微量肥名单")
+        st.caption("第二阶段微量元素直接求解时允许参与。")
+        st.write(MICRO_FERTILIZERS)
+        st.markdown('</div>', unsafe_allow_html=True)
 
-if acid_mode == "调酸":
-    with st.expander("酸液组合设置", expanded=True):
-        if st.button("添加一种酸"):
+# Tab：调酸设置
+with tab_acid:
+    st.markdown('<div class="soft-card">', unsafe_allow_html=True)
+    st.header("💧 调酸设置")
+    acid_mode = st.selectbox("调酸模式", ["不调酸", "调酸"], index=0, key="acid_mode")
+    target_pH = st.slider("目标 pH", 4.0, 7.0, 5.5, 0.1, key="target_pH")
+
+    acid_options_map = {
+        "磷酸 (H3PO4)": ["75%", "80%", "85%"],
+        "硫酸 (H2SO4)": ["50%", "98%"],
+        "硝酸 (HNO3)": ["30%", "40%", "55%", "68%"]
+    }
+
+    if "acid_list" not in st.session_state:
+        st.session_state.acid_list = [
+            {"acid_type": "磷酸 (H3PO4)", "conc_label": "85%", "share": 100.0, "enabled": True}
+        ]
+
+    if acid_mode == "调酸":
+        st.subheader("酸液组合设置")
+
+        if st.button("➕ 添加一种酸"):
             st.session_state.acid_list.append({
                 "acid_type": "磷酸 (H3PO4)",
                 "conc_label": "85%",
@@ -624,6 +816,7 @@ if acid_mode == "调酸":
 
         delete_idx = None
         for i, acid in enumerate(st.session_state.acid_list):
+            st.markdown(f"**酸液 {i+1}**")
             c1, c2, c3, c4, c5 = st.columns([2.2, 1.4, 1.2, 1.0, 0.8])
 
             acid_types = list(acid_options_map.keys())
@@ -672,206 +865,205 @@ if acid_mode == "调酸":
             st.session_state.acid_list.pop(delete_idx)
             st.rerun()
 
-(
-    w_data_calc_preview,
-    base_water_preview,
-    acid_additions_preview,
-    current_hco3_meq,
-    needed_meq_total,
-    target_residual_meq,
-    acid_L_total,
-    acid_detail_rows_preview
-) = get_water_for_calc(w_data, dosing_rate, tank_vol)
-
-c1, c2, c3, c4 = st.columns(4)
-c1.metric("原水 pH", round(w_data.get("pH", 0.0), 2))
-c2.metric("碳酸氢根碱度", f"{round(current_hco3_meq, 2)} meq/L")
-c3.metric("调酸后 HCO3", f"{round(w_data_calc_preview.get('HCO3', 0.0), 1)} ppm")
-c4.metric("总单桶加酸量", f"{round(acid_L_total, 3)} L")
-
-if acid_mode == "调酸" and acid_detail_rows_preview:
-    st.dataframe(pd.DataFrame(acid_detail_rows_preview), use_container_width=True, hide_index=True)
-
-raw_ph = w_data.get("pH", 0.0)
-raw_hco3 = w_data.get("HCO3", 0.0)
-if raw_ph > 7.5 and raw_hco3 < 50:
-    st.warning("原水 pH 偏高但 HCO3 不高，建议复测碱度，或检查是否因曝气/失CO2导致 pH 偏高。")
-if raw_ph < 6.5 and raw_hco3 > 150:
-    st.warning("原水 pH 偏低但 HCO3 偏高，数据组合异常，建议复检原水。")
-
-st.markdown('</div>', unsafe_allow_html=True)
-
-# ==================== 肥料库 ====================
-st.markdown('<div class="simple-box">', unsafe_allow_html=True)
-st.subheader("④ 肥料库")
-st.caption("可直接编辑元素含量和价格。")
-st.session_state.fert_lib = st.data_editor(
-    st.session_state.fert_lib,
-    num_rows="dynamic",
-    use_container_width=True
-)
-
-c1, c2 = st.columns(2)
-with c1:
-    st.caption("大量肥名单")
-    st.write(MACRO_FERTILIZERS)
-with c2:
-    st.caption("微量肥名单")
-    st.write(MICRO_FERTILIZERS)
-st.markdown('</div>', unsafe_allow_html=True)
-
-# ==================== 配方回测 ====================
-st.markdown('<div class="simple-box">', unsafe_allow_html=True)
-st.subheader("⑤ 配方回测")
-st.caption("输入现有投料量后点击分析。")
-
-names = st.session_state.fert_lib.index.tolist()
-inputs = {}
-cols = st.columns(3)
-for i, n in enumerate(names):
-    with cols[i % 3]:
-        inputs[n] = st.number_input(f"{n}(kg)", min_value=0.0, step=0.1, key=f"t2_{n}")
-
-run_analysis = st.button("开始配方回测", use_container_width=True)
-st.markdown('</div>', unsafe_allow_html=True)
-
-# ==================== 结果回推 ====================
-st.markdown('<div class="simple-box">', unsafe_allow_html=True)
-st.subheader("⑥ 结果回推")
-st.caption("输入目标值后自动求最优投料。")
-
-d1, d2, d3, d4 = st.columns(4)
-tg = {
-    "NO3-N": d1.number_input("目标 NO3-N", 0.0, 300.0, 100.0),
-    "NH4-N": d1.number_input("目标 NH4-N", 0.0, 300.0, 50.0),
-    "P": d2.number_input("目标 P", 0.0, 100.0, 40.0),
-    "K": d2.number_input("目标 K", 0.0, 400.0, 180.0),
-    "Ca": d3.number_input("目标 Ca", 0.0, 200.0, 80.0),
-    "Mg": d3.number_input("目标 Mg", 0.0, 100.0, 30.0),
-    "SO4-S": d4.number_input("目标 SO4-S", 0.0, 200.0, 40.0),
-    "Fe": d4.number_input("目标 Fe", 0.000, 10.0, 0.0),
-    "Mn": d1.number_input("目标 Mn", 0.000, 7.0, 0.0),
-    "Zn": d2.number_input("目标 Zn", 0.000, 5.0, 0.0),
-    "Cu": d3.number_input("目标 Cu", 0.000, 3.0, 0.0),
-    "B": d4.number_input("目标 B", 0.000, 8.0, 0.0),
-    "Mo": d2.number_input("目标 Mo", 0.000, 3.0, 0.0),
-    "Urea-N": d1.number_input("目标 Urea-N", 0.00, 100.0, 0.0)
-}
-
-run_opt = st.button("求解最优投料", use_container_width=True)
-st.markdown('</div>', unsafe_allow_html=True)
-
-# ==================== 回测结果 ====================
-if run_analysis:
     (
-        water_for_calc,
-        base_water,
-        acid_additions,
-        _current_hco3_meq,
-        _needed_meq_total,
-        _target_residual_meq,
-        _acid_L_total,
+        w_data_calc_preview,
+        base_water_preview,
+        acid_additions_preview,
+        current_hco3_meq,
+        needed_meq_total,
+        target_residual_meq,
+        acid_L_total,
         acid_detail_rows
     ) = get_water_for_calc(w_data, dosing_rate, tank_vol)
 
-    r, tn, m, e, sc, sa = safe_calc(inputs, tank_vol, dosing_rate, water_for_calc, ec_calib)
-    show_results(
-        r, tn, m, e, sc, sa, inputs,
-        base_water=base_water,
-        acid_additions=acid_additions,
-        acid_rows=acid_detail_rows,
-        raw_water=w_data
+    st.info(
+        f"原水 pH: {round(w_data.get('pH', 0.0), 2)} | "
+        f"原水碳酸氢根碱度: {round(current_hco3_meq, 2)} meq/L"
     )
 
-# ==================== 回推结果 ====================
-if run_opt:
-    lib = st.session_state.fert_lib.fillna(0.0).to_dict('index')
-    cf = (1_000_000 * dosing_rate) / tank_vol
+    raw_ph = w_data.get("pH", 0.0)
+    raw_hco3 = w_data.get("HCO3", 0.0)
+    if raw_ph > 7.5 and raw_hco3 < 50:
+        st.warning("⚠️ 原水 pH 偏高但 HCO3 不高，建议复测碱度，或检查是否因曝气/失CO2导致 pH 偏高。")
+    if raw_ph < 6.5 and raw_hco3 > 150:
+        st.warning("⚠️ 原水 pH 偏低但 HCO3 偏高，数据组合异常，建议复检原水。")
 
-    (
-        water_for_calc,
-        base_water,
-        acid_additions,
-        _current_hco3_meq,
-        _needed_meq_total,
-        _target_residual_meq,
-        _acid_L_total,
-        acid_detail_rows
-    ) = get_water_for_calc(w_data, dosing_rate, tank_vol)
+    if acid_mode == "调酸":
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("总需中和碱度", f"{round(needed_meq_total, 2)} meq/L")
+        c2.metric("总单桶加酸量", f"{round(acid_L_total, 3)} L")
+        c3.metric("调酸后 HCO3", f"{round(w_data_calc_preview.get('HCO3', 0.0), 1)} ppm")
+        c4.metric("目标残余碱度", f"{round(target_residual_meq, 2)} meq/L")
 
-    macro_targets = {
-        "NO3-N": tg["NO3-N"],
-        "NH4-N": tg["NH4-N"],
-        "P": tg["P"],
-        "K": tg["K"],
-        "Ca": tg["Ca"],
-        "Mg": tg["Mg"],
-        "SO4-S": tg["SO4-S"],
-        "Urea-N": tg["Urea-N"]
-    }
+        add_cols = st.columns(3)
+        add_cols[0].metric("P 增加", f"{round(acid_additions_preview.get('P', 0.0), 4)} ppm")
+        add_cols[1].metric("NO3-N 增加", f"{round(acid_additions_preview.get('NO3-N', 0.0), 4)} ppm")
+        add_cols[2].metric("SO4-S 增加", f"{round(acid_additions_preview.get('SO4-S', 0.0), 4)} ppm")
 
-    micro_targets = {
-        "Fe": tg["Fe"],
-        "Mn": tg["Mn"],
-        "Zn": tg["Zn"],
-        "Cu": tg["Cu"],
-        "B": tg["B"],
-        "Mo": tg["Mo"]
-    }
+        if acid_detail_rows:
+            st.subheader("各酸贡献明细")
+            st.dataframe(pd.DataFrame(acid_detail_rows), use_container_width=True, hide_index=True)
+        else:
+            st.warning("⚠️ 已开启调酸，但没有有效酸液比例，请设置至少一种酸的比例大于 0。")
+    st.markdown('</div>', unsafe_allow_html=True)
 
-    macro_status, macro_sol, macro_weights, macro_names = solve_macro_targets(
-        macro_targets=macro_targets,
-        water_for_calc=water_for_calc,
-        lib=lib,
-        cf=cf
-    )
+# Tab2：配方回测
+with tab2:
+    st.markdown('<div class="soft-card">', unsafe_allow_html=True)
+    st.subheader("配方回测")
+    st.caption("输入当前投料量，快速回测总浓度、离子平衡、成本及结构分析。")
+    names = st.session_state.fert_lib.index.tolist()
+    inputs = {}
+    cols = st.columns(3)
+    for i, n in enumerate(names):
+        with cols[i % 3]:
+            inputs[n] = st.number_input(f"{n}(kg)", min_value=0.0, step=0.1, key=f"t2_{n}")
 
-    if macro_status in ['Infeasible', 'Undefined', 'Unbounded']:
-        st.error("❌ 大量元素无解，请调整目标值、酸方案或肥料库。")
-    else:
-        micro_status, micro_sol, micro_names = solve_micro_targets(
-            micro_targets=micro_targets,
-            lib=lib,
-            cf=cf
-        )
+    st.markdown('</div>', unsafe_allow_html=True)
 
-        final_sol = dict(macro_sol)
-        for k, v in micro_sol.items():
-            final_sol[k] = final_sol.get(k, 0.0) + v
+    if st.button("开始分析"):
+        (
+            water_for_calc,
+            base_water,
+            acid_additions,
+            _current_hco3_meq,
+            _needed_meq_total,
+            _target_residual_meq,
+            _acid_L_total,
+            acid_detail_rows
+        ) = get_water_for_calc(w_data, dosing_rate, tank_vol)
 
-        st.success("✅ 已完成：大量元素与微量元素分阶段求解")
-
-        if macro_sol:
-            st.markdown('<div class="simple-box">', unsafe_allow_html=True)
-            st.subheader("大量元素方案")
-            macro_df = pd.DataFrame({
-                "肥料": list(macro_sol.keys()),
-                "投料量": [format_weight(v) for v in macro_sol.values()]
-            })
-            st.dataframe(macro_df, use_container_width=True, hide_index=True)
-            st.markdown('</div>', unsafe_allow_html=True)
-
-        if micro_sol:
-            st.markdown('<div class="simple-box">', unsafe_allow_html=True)
-            st.subheader("微量元素方案")
-            micro_df = pd.DataFrame({
-                "肥料": list(micro_sol.keys()),
-                "投料量": [format_weight(v) for v in micro_sol.values()]
-            })
-            st.dataframe(micro_df, use_container_width=True, hide_index=True)
-            st.markdown('</div>', unsafe_allow_html=True)
-
-        r, tn, m, e, sc, sa = safe_calc(final_sol, tank_vol, dosing_rate, water_for_calc, ec_calib)
+        r, tn, m, e, sc, sa = safe_calc(inputs, tank_vol, dosing_rate, water_for_calc, ec_calib)
         show_results(
-            r, tn, m, e, sc, sa, final_sol,
+            r, tn, m, e, sc, sa, inputs,
             base_water=base_water,
             acid_additions=acid_additions,
             acid_rows=acid_detail_rows,
             raw_water=w_data
         )
 
-        with st.expander("查看目标 vs 实际对比", expanded=False):
-            st.subheader("大量元素目标 vs 实际对比")
+# Tab3：结果回推
+with tab3:
+    st.markdown('<div class="soft-card">', unsafe_allow_html=True)
+    st.info("💡 固定权重：SO4-S 适度放松；结果显示成本；<1kg 自动显示为克。")
+    st.caption("")
+
+    d1, d2, d3, d4 = st.columns(4)
+    tg = {
+        "NO3-N": d1.number_input("目标 NO3-N", 0.0, 300.0, 100.0),
+        "NH4-N": d1.number_input("目标 NH4-N", 0.0, 300.0, 50.0),
+        "P": d2.number_input("目标 P", 0.0, 100.0, 40.0),
+        "K": d2.number_input("目标 K", 0.0, 400.0, 180.0),
+        "Ca": d3.number_input("目标 Ca", 0.0, 200.0, 80.0),
+        "Mg": d3.number_input("目标 Mg", 0.0, 100.0, 30.0),
+        "SO4-S": d4.number_input("目标 SO4-S", 0.0, 200.0, 40.0),
+        "Fe": d4.number_input("目标 Fe", 0.000, 10.0, 0.0),
+        "Mn": d1.number_input("目标 Mn", 0.000, 7.0, 0.0),
+        "Zn": d2.number_input("目标 Zn", 0.000, 5.0, 0.0),
+        "Cu": d3.number_input("目标 Cu", 0.000, 3.0, 0.0),
+        "B": d4.number_input("目标 B", 0.000, 8.0, 0.0),
+        "Mo": d2.number_input("目标 Mo", 0.000, 3.0, 0.0),
+        "Urea-N": d1.number_input("目标 Urea-N", 0.00, 100.0, 0.0)
+    }
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    st.subheader("开始计算")
+    st.caption("点击后将依次完成大量元素求解、微量元素求解，并输出配方、成本与结构分析。")
+
+    if st.button("🚀 求解最优投料"):
+        lib = st.session_state.fert_lib.fillna(0.0).to_dict('index')
+        cf = (1_000_000 * dosing_rate) / tank_vol
+
+        (
+            water_for_calc,
+            base_water,
+            acid_additions,
+            _current_hco3_meq,
+            _needed_meq_total,
+            _target_residual_meq,
+            _acid_L_total,
+            acid_detail_rows
+        ) = get_water_for_calc(w_data, dosing_rate, tank_vol)
+
+        macro_targets = {
+            "NO3-N": tg["NO3-N"],
+            "NH4-N": tg["NH4-N"],
+            "P": tg["P"],
+            "K": tg["K"],
+            "Ca": tg["Ca"],
+            "Mg": tg["Mg"],
+            "SO4-S": tg["SO4-S"],
+            "Urea-N": tg["Urea-N"]
+        }
+
+        micro_targets = {
+            "Fe": tg["Fe"],
+            "Mn": tg["Mn"],
+            "Zn": tg["Zn"],
+            "Cu": tg["Cu"],
+            "B": tg["B"],
+            "Mo": tg["Mo"]
+        }
+
+        macro_status, macro_sol, macro_weights, macro_names = solve_macro_targets(
+            macro_targets=macro_targets,
+            water_for_calc=water_for_calc,
+            lib=lib,
+            cf=cf
+        )
+
+        if macro_status in ['Infeasible', 'Undefined', 'Unbounded']:
+            st.error("❌ 大量元素无解，请调整目标值、酸方案或肥料库。")
+        else:
+            micro_status, micro_sol, micro_names = solve_micro_targets(
+                micro_targets=micro_targets,
+                lib=lib,
+                cf=cf
+            )
+
+            final_sol = dict(macro_sol)
+            for k, v in micro_sol.items():
+                final_sol[k] = final_sol.get(k, 0.0) + v
+
+            st.success("✅ 已完成：大量元素与微量元素按肥料类别分阶段求解")
+
+            c1, c2, c3 = st.columns(3)
+            c1.metric("大量阶段允许肥料数", len(macro_names))
+            c2.metric("微量阶段允许肥料数", len(micro_names))
+            c3.metric("最终投料肥料数", len(final_sol))
+
+            st.subheader("第一阶段：大量元素方案（仅大量肥）")
+            if macro_sol:
+                macro_df = pd.DataFrame({
+                    "肥料": list(macro_sol.keys()),
+                    "投料量": [format_weight(v) for v in macro_sol.values()]
+                })
+                st.dataframe(macro_df, use_container_width=True, hide_index=True)
+
+            st.subheader("第二阶段：微量元素方案（仅微量肥，直接求解）")
+            if micro_sol:
+                micro_df = pd.DataFrame({
+                    "肥料": list(micro_sol.keys()),
+                    "投料量": [format_weight(v) for v in micro_sol.values()]
+                })
+                st.dataframe(micro_df, use_container_width=True, hide_index=True)
+            else:
+                if micro_status in ['Infeasible', 'Undefined', 'Unbounded']:
+                    st.warning("⚠️ 微量元素直接求解无解。")
+                else:
+                    st.info("本次微量元素无需额外补充。")
+
+            r, tn, m, e, sc, sa = safe_calc(final_sol, tank_vol, dosing_rate, water_for_calc, ec_calib)
+            show_results(
+                r, tn, m, e, sc, sa, final_sol,
+                base_water=base_water,
+                acid_additions=acid_additions,
+                acid_rows=acid_detail_rows,
+                raw_water=w_data
+            )
+
+            st.divider()
+            st.subheader("📊 大量元素目标 vs 实际对比（总浓度）")
             comparison_data = []
             for el, target in macro_targets.items():
                 actual_val = r.get(el, 0.0)
@@ -885,9 +1077,23 @@ if run_opt:
                     "%偏差": f"{round(pct_error, 1)}%"
                 })
             comp_df = pd.DataFrame(comparison_data)
-            st.dataframe(comp_df, use_container_width=True, hide_index=True)
 
-            st.subheader("微量元素目标 vs 实际对比")
+            def color_deviation(val):
+                try:
+                    vv = float(str(val).strip('%'))
+                    if abs(vv) <= 2:
+                        return 'background-color: #d4edda; color: #155724'
+                    elif abs(vv) <= 5:
+                        return 'background-color: #fff3cd; color: #856404'
+                    else:
+                        return 'background-color: #f8d7da; color: #721c24'
+                except:
+                    return ''
+
+            styled_df = comp_df.style.map(color_deviation, subset=['%偏差']).format({"%偏差": "{}"}).set_properties(**{'text-align': 'center'})
+            st.dataframe(styled_df, use_container_width=True, hide_index=True)
+
+            st.subheader("🔬 微量元素目标 vs 实际对比（微量肥直接求解）")
             micro_compare = []
             for el, target in micro_targets.items():
                 actual_val = r.get(el, 0.0)
@@ -901,6 +1107,7 @@ if run_opt:
                     "%偏差": f"{round(pct_error, 1)}%"
                 })
             micro_df = pd.DataFrame(micro_compare)
-            st.dataframe(micro_df, use_container_width=True, hide_index=True)
+            styled_micro_df = micro_df.style.map(color_deviation, subset=['%偏差']).format({"%偏差": "{}"}).set_properties(**{'text-align': 'center'})
+            st.dataframe(styled_micro_df, use_container_width=True, hide_index=True)
 
-st.caption("百瑞果蔬 Blueberry v2.0")
+st.caption("百瑞果蔬 Blueberry v1.1")
