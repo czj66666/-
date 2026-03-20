@@ -355,4 +355,4 @@ if run_opt:
         micro_df = pd.DataFrame(micro_compare)
         st.dataframe(micro_df, use_container_width=True, hide_index=True)
 
-st.caption("百瑞果蔬 Blueberry v1.1")这个软件可以修改哪里，把主界面更简单，更一目了然，只需要文字告诉我，不要代码，说明在第几行附近。
+st.caption("百瑞果蔬 Blueberry v1.1")
